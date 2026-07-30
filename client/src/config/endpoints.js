@@ -1,0 +1,18 @@
+// Single source of truth for backend paths. See ENDPOINTS.md §9.
+export const ENDPOINTS = {
+  meetings: {
+    create:      () => '/api/meetings',
+    list:        () => '/api/meetings',
+    detail:      (id) => `/api/meetings/${id}`,
+    process:     (id) => `/api/meetings/${id}/process`,
+    resummarize: (id) => `/api/meetings/${id}/resummarize`,
+    status:      (id) => `/api/meetings/${id}/status`,
+    speakers:    (id) => `/api/meetings/${id}/speakers`,
+    export:      (id, format) => `/api/meetings/${id}/export?format=${format}`,
+  },
+  actionItems: {
+    list: () => '/api/action-items',
+    byId: (id) => `/api/action-items/${id}`,
+  },
+  users: { me: () => '/api/users/me' },
+};
