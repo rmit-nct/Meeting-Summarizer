@@ -1,7 +1,35 @@
 # CLAUDE.md
 
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
 Guidance for Claude Code when working in the **NCT Meeting Summarizer** repository.
 Read this file first. It is the index; the detail lives in the linked docs.
+
+---
+
+## 0. Current state of the code
+
+The repo is at the **scaffold stage** (see `SCAFFOLD.md`), not a working app yet. Every
+module has two kinds of files:
+
+- **Business files** (`*.service.js`, `*.repository.js`, `*.controller.js`, `*.validator.js`,
+  `*.dto.js`, `*.interface.js`, prompts, export renderers) — genuinely empty, a single
+  comment pointing at the doc section to implement from. There is no logic to read yet;
+  read the referenced doc section instead of the file.
+- **Wiring files** (`index.js`, `app.js`, `config/*`, `errorHandler.js`, `validate.js`,
+  `*.routes.js` with routes commented out, `*.events.js`/`*.socket.js` with handlers
+  commented out, `*.model.js`) — minimally real, just enough for both processes to boot,
+  REST routes to 404 correctly, and the client to render placeholder pages.
+
+Implement modules in the dependency order the pipeline runs in: `auth`/`user` →
+`meeting` → `transcript` → `summary` → `action-item` → `processing` → `overview` →
+`export` → `live-session`. `.env` files already contain placeholder (`replace-me`) values
+that satisfy env validation at boot — they are not real Supabase/Groq credentials.
+
+There are no automated tests in this repository yet (`npm test` at the root and in
+`server/` is an unset placeholder). Verify changes with the smoke test in `SCAFFOLD.md` §15
+(health check, a 404 envelope from an unimplemented route, client dev server, client build)
+until real tests exist.
 
 ---
 
@@ -112,18 +140,27 @@ notebooks. The predecessor project had these; they are not in this brief.
 ## 6. Commands
 
 ```bash
+# repo root — runs both dev servers together via concurrently
+npm install
+npm run dev             # = npm run dev:server + npm run dev:client, in parallel
+
 # server/
 npm install
-npm run dev            # nodemon, http://localhost:4000 (HTTP + WebSocket)
-npm run lint
-npx supabase db push   # apply migrations
+npm run dev              # nodemon, http://localhost:4000 (HTTP + WebSocket)
+npm run lint              # eslint .
+npx supabase db push      # apply migrations in server/supabase/migrations/
 
 # client/
 npm install
-npm run dev            # vite, http://localhost:5173
+npm run dev               # vite, http://localhost:5173
 npm run build
 npm run preview
-npm run lint
+npm run lint               # oxlint
 ```
+
+No test runner is configured yet on any package — `npm test` is an unset placeholder
+everywhere. Until real tests exist, verify with the `SCAFFOLD.md` §15 smoke test
+(`GET /api/health`, a 404 envelope from a not-yet-wired route, `client` dev server render,
+`client` build).
 
 Before any commit: lint passes on both sides and `client/` builds.
