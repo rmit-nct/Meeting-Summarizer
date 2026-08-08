@@ -31,7 +31,7 @@ Other modules go through that module's `*.interface.js`.
 
 ```sql
 create type meeting_status as enum (
-  'uploaded', 'transcribing', 'transcribed', 'summarizing', 'completed', 'failed'
+  'draft', 'uploaded', 'transcribing', 'transcribed', 'summarizing', 'completed', 'failed'
 );
 
 create type meeting_source as enum ('upload', 'recording', 'live');
@@ -62,24 +62,38 @@ Populated by an `after insert on auth.users` trigger.
 ### `meetings` — module: `meeting`
 The durable meeting record. Owns the status machine.
 
+A meeting can exist with no file at all — the user creates a card (title + date) first,
+then attaches a recording later from the meeting's own page. That's why every
+file-related column below is nullable: it stays `null` for the entire time the meeting sits
+in `draft`.
+
 | Column | Type | Notes |
 | --- | --- | --- |
 | `id` | `uuid` PK | |
 | `user_id` | `uuid` | |
-| `title` | `text` not null | user-editable; defaults from the filename |
+| `title` | `text` not null | user-editable; set at creation, not defaulted from a filename anymore |
 | `description` | `text` null | |
 | `meeting_date` | `date` null | used by the history date filter |
-| `source_type` | `meeting_source` | |
-| `original_filename` | `text` | |
-| `mime_type` | `text` | |
-| `size_bytes` | `bigint` | |
+| `source_type` | `meeting_source` null | **null while `status='draft'`** |
+| `original_filename` | `text` null | **null while `status='draft'`** |
+| `mime_type` | `text` null | **null while `status='draft'`** |
+| `size_bytes` | `bigint` null | **null while `status='draft'`** |
 | `duration_seconds` | `int` null | filled after transcription |
-| `storage_path` | `text` | `{user_id}/{meeting_id}/{filename}` in the `recordings` bucket. **Never serialized to a client.** |
-| `status` | `meeting_status` | default `'uploaded'` |
+| `storage_path` | `text` null | **null while `status='draft'`**; once set: `{user_id}/{meeting_id}/{filename}` in the `recordings` bucket. **Never serialized to a client.** |
+| `status` | `meeting_status` | default `'draft'` |
 | `error_message` | `text` null | required whenever status = `failed` |
 | `created_at` / `updated_at` | `timestamptz` | |
 
 Indexes: `(user_id, created_at desc)`, `(user_id, status)`.
+
+A check constraint enforces the pairing so the table can't drift into a half-attached state:
+
+```sql
+alter table meetings add constraint meeting_file_fields_consistent check (
+  (status = 'draft' and storage_path is null)
+  or (status != 'draft' and storage_path is not null)
+);
+```
 
 ### `transcripts` — module: `transcript`
 One-to-one with `meetings`.

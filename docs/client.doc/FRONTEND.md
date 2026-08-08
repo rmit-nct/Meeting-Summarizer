@@ -25,8 +25,8 @@ imports a page. `config/` and `utils/` are outside the tiers and may be used by 
 | `/signup` | `Signup` | public |
 | `/auth/callback` | `AuthCallback` | public |
 | `/meetings` | `MeetingHistory` | authenticated |
-| `/meetings/new` | `NewMeeting` | authenticated |
-| `/meetings/:id` | `MeetingDetail` | authenticated |
+| `/meetings/new` | `NewMeeting` — title + date only, creates a `draft` card | authenticated |
+| `/meetings/:id` | `MeetingDetail` — renders `Dropzone`/`Recorder` while `draft`, `ProcessingStatus` once uploaded | authenticated |
 | `/live` | `LiveSession` *(stretch)* | authenticated |
 | `/settings` | `Settings` | authenticated |
 
@@ -39,6 +39,21 @@ imports a page. `config/` and `utils/` are outside the tiers and may be used by 
 
 Pages are composition roots only: assemble components, read stores, pass props. A page
 containing an API call or business logic is a layering violation.
+
+**Create, then attach.** `NewMeeting` only collects a title and an optional date, calls
+`meetingsAPI.create`, and navigates straight to `/meetings/:id` — it never touches
+`Dropzone` or `Recorder`. Those two live on `MeetingDetail` instead, rendered only while
+`meeting.status === 'draft'`; once a file is attached the page swaps to `ProcessingStatus`.
+This means `MeetingDetail` has two visibly different views of the same route depending on
+status — build it as one page reading `status` from the already-fetched meeting, not as two
+separate pages.
+
+| `status` | `MeetingDetail` shows |
+| --- | --- |
+| `draft` | `Dropzone` + `Recorder` — no file yet |
+| `uploaded` … `summarizing` | `ProcessingStatus` |
+| `completed` | `SummaryView`, `TranscriptView`, `ActionItemList`, `SpeakerLegend`, `ExportMenu` |
+| `failed` | Error state + Retry, wired to `POST /:id/process` or `/resummarize` (`ENDPOINTS.md` §3) |
 
 ---
 
@@ -69,9 +84,9 @@ Rules:
 
 | Package | Responsibility |
 | --- | --- |
-| `Dropzone` | Drag-and-drop + file picker. Validates MIME/size client-side against `utils/constants.js` — the same values the server enforces. |
-| `Recorder` | In-browser recording. See §4. |
-| `UploadProgress` | Byte progress of the direct-to-Storage upload. |
+| `Dropzone` | Drag-and-drop + file picker, rendered on `MeetingDetail` while `status === 'draft'`. Validates MIME/size client-side against `utils/constants.js` — the same values the server enforces. |
+| `Recorder` | In-browser recording, same placement as `Dropzone`. See §4. |
+| `UploadProgress` | Byte progress of the direct-to-Storage upload, once `POST /:id/upload` has returned a signed URL. |
 | `ProcessingStatus` | The pipeline stepper. See §5. |
 | `MeetingList` | History rows, keyword box, date range, pagination. |
 | `SummaryView` | Bullets grouped by category + filter chips + speaker chips + jump-to-timestamp. |
@@ -85,12 +100,17 @@ Rules:
 
 ## 4. `Recorder`
 
+- Both `Recorder` and `Dropzone` operate on a meeting that **already exists** — the
+  `meetingId` comes from the current route (`MeetingDetail` is already at `/meetings/:id`).
+  Neither component's service file ever calls `ENDPOINTS.meetings.create()`; both call
+  `http.post(ENDPOINTS.meetings.upload(meetingId), fileMeta)` to get the signed URL, then
+  `PUT` the bytes directly to Storage.
 - `getUserMedia({ audio: true })`. Handle permission denial with a visible message, not a
   console error — a dead Record button during a demo looks like a broken app.
 - Record to `audio/webm;codecs=opus`. Check `MediaRecorder.isTypeSupported` and fall back.
 - Show elapsed time and a live level meter so the user can see it is working.
-- On stop, produce a `Blob` and hand it to **the same upload path the Dropzone uses**.
-  One upload flow, two entry points.
+- On stop, produce a `Blob` and hand it to **the same upload path `Dropzone` uses** — one
+  upload flow, two entry points.
 - No client-side transcoding. The server has ffmpeg (`AI_INTEGRATION.md` §2); the browser
   does not need to do this work.
 

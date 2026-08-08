@@ -426,9 +426,9 @@ EOF
 ```bash
 new_model src/modules/meeting/meeting.model.js meetings "MODELS.md §2"
 new_stub  src/modules/meeting/meeting.repository.js "ALL data access for meetings. Every method takes and scopes on userId. See MODELS.md §3, §5 (search_meetings rpc)."
-new_stub  src/modules/meeting/meeting.service.js "Business rules for meetings. Status is owned by the processing module, not here. See ARCHITECTURE.md §2.2, §4.1. Publishes meeting:deleted on removal."
-new_stub  src/modules/meeting/meeting.controller.js "HTTP-shaped: create, list, update, remove. See ENDPOINTS.md §2."
-new_stub  src/modules/meeting/meeting.validator.js "Zod schemas: create, update, list query. See ENDPOINTS.md §2."
+new_stub  src/modules/meeting/meeting.service.js "Business rules for meetings: create as a draft, and the draft->uploaded transition on upload(). Status from uploaded onward belongs to processing, not here. See ARCHITECTURE.md §2.2, §4. Publishes meeting:deleted on removal."
+new_stub  src/modules/meeting/meeting.controller.js "HTTP-shaped: create, list, update, remove, upload. See ENDPOINTS.md §2."
+new_stub  src/modules/meeting/meeting.validator.js "Zod schemas: create (title/description/meetingDate only), upload (sourceType/originalFilename/mimeType/sizeBytes), update, list query. See ENDPOINTS.md §2."
 new_stub  src/modules/meeting/meeting.dto.js "Shapes meeting rows for the API boundary. Composes with shared/dto.js."
 new_stub  src/modules/meeting/meeting.interface.js "Exposes getMeetingForOwner, assertOwnership, markFailed, etc. to other modules. See ARCHITECTURE.md §2.1."
 
@@ -438,8 +438,9 @@ import { Router } from 'express';
 // Mounted at /api/meetings in app.js. See ENDPOINTS.md §2.
 const router = Router();
 
-// TODO: router.post('/', validate(meetingValidator.create), meetingController.create);
+// TODO: router.post('/', validate(meetingValidator.create), meetingController.create);       // creates a draft card, no file
 // TODO: router.get('/', meetingController.list);
+// TODO: router.post('/:id/upload', validate(meetingValidator.upload), meetingController.upload); // draft -> uploaded
 // TODO: router.patch('/:id', validate(meetingValidator.update), meetingController.update);
 // TODO: router.delete('/:id', meetingController.remove);
 

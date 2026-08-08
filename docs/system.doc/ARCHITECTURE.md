@@ -75,12 +75,12 @@ ready to process it.
 | --- | --- | --- |
 | `auth` | — (delegates to Supabase Auth) | Verifies Supabase JWTs, resolves the request user, exposes `requireAuth`. |
 | `user` | `Profile` | Display name, avatar, account settings. |
-| `meeting` | `Meeting` | The durable meeting record and its status machine. Owner of the lifecycle. |
+| `meeting` | `Meeting` | The durable meeting record. Owns creation as an empty `draft` card and the `draft → uploaded` transition when a file is attached later. Everything from `uploaded` onward belongs to `processing`. |
 | `transcript` | `Transcript` | Audio preprocessing (ffmpeg) + Groq Whisper + segment storage. |
 | `summary` | `Summary`, `SummaryPoint`, `Speaker` | Groq Llama call, JSON parsing/normalization, bullets, topic tags, speaker labels. |
 | `action-item` | `ActionItem` | CRUD + completion state. Seeded from summary output, then user-owned. |
 | `live-session` | `LiveSession` (transient, TTL) | Real-time recording session; materializes into durable records on end. |
-| `processing` | — | **Orchestrator.** Drives the pipeline, owns status transitions, publishes progress events. |
+| `processing` | — | **Orchestrator.** Drives the AI pipeline (`uploaded` onward), publishes progress events. |
 | `overview` | — | **Aggregator.** Builds composed meeting-detail and history-list responses from the interfaces above. |
 | `export` | — | Renders Markdown and PDF from `overview`'s composed payload. |
 
@@ -253,17 +253,31 @@ must never silently lose a recording.**
 
 ## 4. The processing pipeline
 
-The `processing` module owns this flow. It is the only module that writes `meeting.status`,
-and it does so through the `meeting` interface.
+A meeting moves through two owners. `meeting` itself creates the card and owns the single
+`draft → uploaded` transition once a file is attached, from the meeting's own page — a
+meeting can sit in `draft` indefinitely with no file at all. From `uploaded` onward,
+`processing` is the only module that writes `meeting.status`, doing so through the
+`meeting` interface.
+
+```
+ client                          meeting
+   │  POST /api/meetings              │
+   ├─────────────────────────────────►│ create() → status=draft
+   │  ◄──────────── 201, no file ─────┤
+   │                                  │
+   │   (user opens the meeting page, picks or records a file — could be any time later)
+   │                                  │
+   │  POST /:id/upload                │
+   ├─────────────────────────────────►│ status=uploaded
+   │  ◄──────── signed upload URL ────┤
+   │                                  │
+   ├── PUT file → Supabase Storage (direct) ────────────►
+```
+
+From here, `processing` takes over:
 
 ```
  client                    processing            transcript             summary
-   │  POST /api/meetings        │                     │                     │
-   ├───────────────────────────►│ meeting.create()    │                     │
-   │  ◄── signed upload URL ────┤ status=uploaded     │                     │
-   │                            │                     │                     │
-   ├── PUT file → Supabase Storage (direct)           │                     │
-   │                            │                     │                     │
    │  POST /:id/process         │                     │                     │
    ├───────────────────────────►│ status=transcribing │                     │
    │  ◄──── 202 Accepted ───────┤ publish             │                     │
@@ -298,18 +312,21 @@ socket messages.
 `meeting.status` is the single source of truth. Terminal states: `completed`, `failed`.
 
 ```
-uploaded ──► transcribing ──► transcribed ──► summarizing ──► completed
-    │              │                │               │
-    └──────────────┴────────────────┴───────────────┴────► failed  (+ errorMessage)
+draft ──► uploaded ──► transcribing ──► transcribed ──► summarizing ──► completed
+              │              │                │               │
+              └──────────────┴────────────────┴───────────────┴────► failed  (+ errorMessage)
 ```
 
-- Forward-only, or to `failed`. Never backwards.
+- `draft → uploaded` is written by `meeting` itself when a file is attached
+  (`ENDPOINTS.md` §2). Every transition from `uploaded` onward is written by `processing`.
+- Forward-only, or to `failed`. Never backwards. `draft` never fails — there's nothing to
+  fail yet; a meeting stuck in `draft` is just waiting for a file, not broken.
 - Every transition to `failed` writes a message a non-technical evaluator can read —
   never a raw stack trace.
 - Retry re-enters at the earliest incomplete stage: if a transcript already exists, retry
   only re-runs summarization.
-- `progress` in the socket payload is a fixed lookup per status (`uploaded` 0.1 →
-  `completed` 1.0). It exists so the bar moves; it is not a measurement.
+- `progress` in the socket payload is a fixed lookup per status (`draft` 0, `uploaded` 0.1
+  → `completed` 1.0). It exists so the bar moves; it is not a measurement.
 
 ### 4.2 What the long-running process buys us
 
