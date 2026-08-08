@@ -69,33 +69,58 @@ Controllers throw `AppError`; they never format a failure response themselves.
 ## 2. `meeting` module — `/api/meetings`
 
 ### `POST /api/meetings`
-Creates the meeting record and returns a signed URL for the browser to upload to.
+Creates an empty meeting **card** — no file yet. The user creates this first, then attaches
+a recording later from the meeting's own page. See `FRONTEND.md` §2 for the flow.
 
 Request:
 ```json
-{
-  "title": "Weekly sync",
-  "sourceType": "upload",
-  "originalFilename": "sync.m4a",
-  "mimeType": "audio/mp4",
-  "sizeBytes": 18432000,
-  "meetingDate": "2026-08-03"
-}
+{ "title": "Weekly sync", "description": "…", "meetingDate": "2026-08-03" }
 ```
 
 Response `201`:
 ```json
 {
   "success": true,
+  "data": { "meeting": { "id": "…", "title": "Weekly sync", "status": "draft", "…": "…" } }
+}
+```
+
+No `upload` object here — there's no file to upload to yet. `status` is always `draft`.
+
+### `POST /api/meetings/:id/upload`
+Attaches a file to an existing draft and returns a signed URL for the browser to upload to.
+This is the step that used to be folded into `POST /api/meetings`.
+
+Requires `status === 'draft'`, else `409 invalid_state` — a meeting only gets one file;
+re-recording means deleting the meeting and starting over, not re-calling this endpoint.
+
+Request:
+```json
+{
+  "sourceType": "upload",
+  "originalFilename": "sync.m4a",
+  "mimeType": "audio/mp4",
+  "sizeBytes": 18432000
+}
+```
+
+Response `200`:
+```json
+{
+  "success": true,
   "data": {
-    "meeting": { "id": "…", "title": "Weekly sync", "status": "uploaded", "…": "…" },
+    "meeting": { "id": "…", "status": "uploaded", "…": "…" },
     "upload": { "signedUrl": "https://…", "path": "uid/mid/sync.m4a", "token": "…" }
   }
 }
 ```
 
 Validator checks `mimeType` against the allowlist (§7) and `sizeBytes` against
-`MAX_UPLOAD_BYTES` before the service runs.
+`MAX_UPLOAD_BYTES` before the service runs. On success, `meeting.service.js` writes
+`source_type`, `original_filename`, `mime_type`, `size_bytes`, `storage_path`, and moves
+`status` from `draft` to `uploaded` — all within the `meeting` module itself. This is the
+one status transition `meeting` is allowed to make on its own; every transition from
+`uploaded` onward belongs to `processing` (`ARCHITECTURE.md` §4.1).
 
 ### `GET /api/meetings`
 History list with keyword search and date filter (both required by the brief).
@@ -287,6 +312,7 @@ export const ENDPOINTS = {
     create:      () => '/api/meetings',
     list:        () => '/api/meetings',
     detail:      (id) => `/api/meetings/${id}`,
+    upload:      (id) => `/api/meetings/${id}/upload`,
     process:     (id) => `/api/meetings/${id}/process`,
     resummarize: (id) => `/api/meetings/${id}/resummarize`,
     status:      (id) => `/api/meetings/${id}/status`,
