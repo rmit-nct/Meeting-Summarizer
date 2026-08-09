@@ -43,8 +43,8 @@ to document the format.
 | `NODE_ENV` | no | `development` \| `production` |
 | `CLIENT_URL` | **yes** | Allowed CORS + socket origin. Comma-separated for multiple. Never `*`. |
 | `SUPABASE_URL` | **yes** | Project URL |
-| `SUPABASE_SERVICE_ROLE_KEY` | **yes** | **Bypasses RLS.** Server only. Never in `client/`. |
-| `SUPABASE_JWT_SECRET` | **yes** | Used by `authenticate.js` to verify access tokens |
+| `SUPABASE_SECRET_KEY` | **yes** | New-format Supabase secret key (`sb_secret_...`). **Bypasses RLS.** Server only. Never in `client/`. |
+| `SUPABASE_JWT_SECRET` | **yes** | Legacy HS256 shared secret, used by `authenticate.js` to verify access tokens. |
 | `SUPABASE_STORAGE_BUCKET` | no | default `recordings` |
 | `GROQ_API_KEY` | **yes** | Server only |
 | `GROQ_TRANSCRIPTION_MODEL` | no | default `whisper-large-v3` |
@@ -169,7 +169,7 @@ before evaluators open the link. A trivial `GET /api/health` pinged on a schedul
 
 - [ ] No `.env` in git history (`git log --all --  '*/.env'` is empty)
 - [ ] No key literal in either codebase (`grep -rn "gsk_\|eyJ" client/src server/src` is clean)
-- [ ] `SUPABASE_SERVICE_ROLE_KEY` and `GROQ_API_KEY` appear only under `server/`
+- [ ] `SUPABASE_SECRET_KEY`, `SUPABASE_JWT_SECRET`, and `GROQ_API_KEY` appear only under `server/`
 - [ ] No `VITE_`-prefixed secret
 - [ ] RLS enabled on all eight tables
 - [ ] The `recordings` bucket is private

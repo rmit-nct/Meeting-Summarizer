@@ -108,8 +108,8 @@ authority. This table is the concrete technology mapping.
 
 7. **No hardcoded URLs or keys.** Backend paths live in `client/src/config/endpoints.js`;
    everything environmental goes through `config/env.js` on each side.
-8. **Secrets are server-only.** `GROQ_API_KEY` and `SUPABASE_SERVICE_ROLE_KEY` exist only
-   in `server/`. Anything in `client/` is public by definition.
+8. **Secrets are server-only.** `GROQ_API_KEY`, `SUPABASE_SECRET_KEY`, and
+   `SUPABASE_JWT_SECRET` exist only in `server/`. Anything in `client/` is public by definition.
 9. **The browser uploads directly to Supabase Storage** via a signed URL. Media bytes never
    pass through the API.
 10. **Every schema change is a migration file** in `server/supabase/migrations/`.

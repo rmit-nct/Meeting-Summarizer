@@ -93,8 +93,8 @@ and stays that way. Full details: `docs/system.doc/SETUP.md` §3.
 | `NODE_ENV` | no | `development` \| `production` |
 | `CLIENT_URL` | yes | Allowed CORS + socket origin. Comma-separated for multiple. Never `*`. |
 | `SUPABASE_URL` | yes | Project URL |
-| `SUPABASE_SERVICE_ROLE_KEY` | yes | Bypasses RLS. Server only — never in `client/`. |
-| `SUPABASE_JWT_SECRET` | yes | Used to verify Supabase access tokens |
+| `SUPABASE_SECRET_KEY` | yes | New-format Supabase secret key. Bypasses RLS. Server only — never in `client/`. |
+| `SUPABASE_JWT_SECRET` | yes | Legacy JWT secret, used to verify Supabase access tokens |
 | `SUPABASE_STORAGE_BUCKET` | no | default `recordings` |
 | `GROQ_API_KEY` | yes | Server only |
 | `GROQ_TRANSCRIPTION_MODEL` | no | default `whisper-large-v3` |

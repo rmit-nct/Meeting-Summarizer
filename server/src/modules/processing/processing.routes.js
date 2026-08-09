@@ -1,10 +1,15 @@
 import { Router } from 'express';
+import { validateParams } from '../../middleware/validate.js';
+import { processingController } from './processing.controller.js';
+import { meetingIdParam } from './processing.validator.js';
 
 // Mounted at /api/meetings in app.js. See ENDPOINTS.md §3.
 const router = Router();
 
-// TODO: router.post('/:id/process', processingController.process);
+router.post('/:id/process', validateParams(meetingIdParam), processingController.process);
+router.get('/:id/status', validateParams(meetingIdParam), processingController.status);
+
 // TODO: router.post('/:id/resummarize', processingController.resummarize);
-// TODO: router.get('/:id/status', processingController.status);
+// Needs the summary module (Groq Llama call + parsing), not yet implemented.
 
 export default router;

@@ -14,3 +14,21 @@ export function validate(schema) {
     next();
   };
 }
+
+// Same as validate(), but against req.params — for routes like /:id/process
+// that carry no body. Usage:
+// router.post('/:id/process', validateParams(processingValidator.meetingIdParam), processingController.process)
+export function validateParams(schema) {
+  return (req, res, next) => {
+    if (!schema) return next();
+    const result = schema.safeParse(req.params);
+    if (!result.success) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'validation_failed', message: 'Validation failed', details: result.error.flatten() },
+      });
+    }
+    req.params = result.data;
+    next();
+  };
+}

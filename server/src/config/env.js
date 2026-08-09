@@ -6,7 +6,7 @@ const schema = z.object({
   NODE_ENV: z.string().default('development'),
   CLIENT_URL: z.string().min(1),
   SUPABASE_URL: z.string().min(1),
-  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
+  SUPABASE_SECRET_KEY: z.string().min(1),
   SUPABASE_JWT_SECRET: z.string().min(1),
   SUPABASE_STORAGE_BUCKET: z.string().default('recordings'),
   GROQ_API_KEY: z.string().min(1),
