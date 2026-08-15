@@ -9,21 +9,32 @@ Read this file first. It is the index; the detail lives in the linked docs.
 
 ## 0. Current state of the code
 
-The repo is at the **scaffold stage** (see `SCAFFOLD.md`), not a working app yet. Every
-module has two kinds of files:
+The repo started at the **scaffold stage** (see `SCAFFOLD.md`) and is now partway through
+implementation, unevenly across modules. Business files (`*.service.js`,
+`*.repository.js`, `*.controller.js`, `*.validator.js`, `*.dto.js`, `*.interface.js`,
+prompts, export renderers) that are still genuinely empty carry a single comment pointing
+at the doc section to implement from — for those, read the referenced doc section instead
+of the file. Where a module below is marked implemented, read the file itself.
 
-- **Business files** (`*.service.js`, `*.repository.js`, `*.controller.js`, `*.validator.js`,
-  `*.dto.js`, `*.interface.js`, prompts, export renderers) — genuinely empty, a single
-  comment pointing at the doc section to implement from. There is no logic to read yet;
-  read the referenced doc section instead of the file.
-- **Wiring files** (`index.js`, `app.js`, `config/*`, `errorHandler.js`, `validate.js`,
-  `*.routes.js` with routes commented out, `*.events.js`/`*.socket.js` with handlers
-  commented out, `*.model.js`) — minimally real, just enough for both processes to boot,
-  REST routes to 404 correctly, and the client to render placeholder pages.
+- **Implemented:** `transcript` (full ffmpeg + Groq Whisper pipeline in
+  `transcript.service.js`, real repository, interface, event publishing) and `processing`
+  (controller/service/validator wire `POST /api/meetings/:id/process` and
+  `GET /api/meetings/:id/status`, orchestrating via the event bus). `processing.socket.js`
+  is still a stub.
+- **Partial:** `meeting.repository.js` and `meeting.interface.js` are real (status
+  transitions, `userId`-scoped queries), but `meeting.controller.js`, `meeting.service.js`,
+  `meeting.validator.js`, and `meeting.dto.js` are still empty, and `meeting.routes.js` has
+  no live routes. **There is currently no HTTP endpoint to create, list, or attach a file
+  to a meeting** — `processing`'s two endpoints assume a meeting row already exists.
+- **Still scaffold** (route file is a shell at most, everything else empty): `auth`,
+  `user`, `summary` (including `summary.prompts.js` — no real prompts yet), `action-item`,
+  `overview`, `export`, `live-session`. All of `client/` is still scaffold — every
+  component package is 1–4 line placeholder files; no business logic on the frontend yet.
 
-Implement modules in the dependency order the pipeline runs in: `auth`/`user` →
-`meeting` → `transcript` → `summary` → `action-item` → `processing` → `overview` →
-`export` → `live-session`. `.env` files already contain placeholder (`replace-me`) values
+Because `transcript`/`processing` were built ahead of `auth`/`user`/`meeting`, the
+practical next gap is finishing `meeting`'s controller/service/validator/dto/routes so a
+meeting can actually be created and a file attached end-to-end — do that before extending
+`summary` or later stages. `.env` files already contain placeholder (`replace-me`) values
 that satisfy env validation at boot — they are not real Supabase/Groq credentials.
 
 There are no automated tests in this repository yet (`npm test` at the root and in

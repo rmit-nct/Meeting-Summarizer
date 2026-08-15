@@ -16,16 +16,16 @@ coupled only through REST (`/api/*`) and WebSocket (`/rt`). Backend is a Modular
 with strict N-Tier layering per module; frontend is package-based components. Full rationale:
 `docs/system.doc/ARCHITECTURE.md`.
 
-## Repo is at scaffold stage
+## Repo is mid-scaffold — implementation status varies by module
 
-Every backend/frontend module already exists as files, but business logic files
+Every backend/frontend module exists as files; most business logic files
 (`*.service.js`, `*.repository.js`, `*.controller.js`, `*.validator.js`, `*.dto.js`,
-`*.interface.js`, prompts, export renderers) are genuinely empty — one comment pointing at
-the doc section to implement from. Wiring files (`index.js`, `app.js`, `config/*`,
-`*.routes.js` with routes commented out, etc.) are minimally real so both processes boot.
-Read the referenced doc section, not the empty file. Implementation order:
-`auth`/`user` → `meeting` → `transcript` → `summary` → `action-item` → `processing` →
-`overview` → `export` → `live-session`.
+`*.interface.js`, prompts, export renderers) are still genuinely empty — one comment
+pointing at the doc section to implement from — but `transcript` and `processing` are now
+fully implemented, and `meeting` has a real repository/interface but no controller,
+service, or live routes yet (so there's no HTTP endpoint to create a meeting yet — that's
+the current gap). Everything else, and all of `client/`, is still empty scaffold. See
+`docs/CLAUDE.md` §0 for the exact per-module breakdown before assuming a file is empty.
 
 ## Commands
 
