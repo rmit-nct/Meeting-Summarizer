@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { Microphone, MicrophoneSlash, Stop, CircleNotch } from '@phosphor-icons/react';
 import { formatBytes } from '../../utils/constants.js';
 import UploadProgress from '../UploadProgress/index.jsx';
 import { useRecorder } from './useRecorder.hook.js';
@@ -59,7 +60,7 @@ export default function Recorder({ meetingId, onUploaded }) {
 function IdleView({ onStart }) {
   return (
     <div className="flex flex-col items-center gap-4 text-center">
-      <MicIcon className="text-accent" />
+      <Microphone size={40} weight="regular" className="text-accent" />
       <div>
         <p className="text-lg font-medium text-fg">Record in browser</p>
         <p className="mt-1 text-sm text-fg-muted">
@@ -81,7 +82,7 @@ function IdleView({ onStart }) {
 function RequestingView() {
   return (
     <div className="flex items-center justify-center gap-3 py-6 text-sm text-fg-muted">
-      <Spinner />
+      <CircleNotch size={16} weight="bold" className="animate-spin" />
       Waiting for microphone permission…
     </div>
   );
@@ -107,7 +108,7 @@ function RecordingView({ elapsedMs, onStop }) {
         onClick={onStop}
         className="inline-flex items-center gap-2 rounded-(--radius-md) border border-fg/15 bg-elevated px-5 py-2.5 text-sm font-medium text-fg transition hover:border-fg/30"
       >
-        <StopIcon />
+        <Stop size={14} weight="fill" />
         Stop
       </button>
     </div>
@@ -151,7 +152,7 @@ function PreviewView({ previewUrl, durationLabel, sizeLabel, onDiscard, onSubmit
 function PermissionDeniedView({ error, onRetry }) {
   return (
     <div className="flex flex-col items-center gap-3 text-center">
-      <MicOffIcon className="text-danger" />
+      <MicrophoneSlash size={40} weight="regular" className="text-danger" />
       <p className="text-sm font-medium text-fg">Microphone blocked</p>
       <p className="max-w-sm text-sm text-fg-muted">{error}</p>
       <button
@@ -181,58 +182,11 @@ function ErrorView({ error, onRetry }) {
   );
 }
 
-/* ---------- Utilities + icons ---------- */
+/* ---------- Utilities ---------- */
 
 function formatMmSs(ms) {
   const total = Math.floor(ms / 1000);
   const m = Math.floor(total / 60);
   const s = total % 60;
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-}
-
-function MicIcon({ className = '' }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"
-         strokeLinecap="round" strokeLinejoin="round"
-         className={`h-10 w-10 ${className}`} aria-hidden="true">
-      <rect x="9" y="3" width="6" height="12" rx="3" />
-      <path d="M19 11a7 7 0 0 1-14 0" />
-      <path d="M12 18v3" />
-      <path d="M9 21h6" />
-    </svg>
-  );
-}
-
-function MicOffIcon({ className = '' }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"
-         strokeLinecap="round" strokeLinejoin="round"
-         className={`h-10 w-10 ${className}`} aria-hidden="true">
-      <path d="m2 2 20 20" />
-      <path d="M15 9V6a3 3 0 0 0-5.94-.6" />
-      <path d="M9 9v3a3 3 0 0 0 5.12 2.12" />
-      <path d="M19 11a7 7 0 0 1-11 5.7" />
-      <path d="M5 11a7 7 0 0 0 .8 3.25" />
-      <path d="M12 18v3" />
-      <path d="M9 21h6" />
-    </svg>
-  );
-}
-
-function StopIcon({ className = '' }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="currentColor"
-         className={`h-3.5 w-3.5 ${className}`} aria-hidden="true">
-      <rect x="6" y="6" width="12" height="12" rx="2" />
-    </svg>
-  );
-}
-
-function Spinner() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4 animate-spin" aria-hidden="true">
-      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeOpacity="0.25" strokeWidth="3" />
-      <path d="M22 12a10 10 0 0 0-10-10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
-    </svg>
-  );
 }

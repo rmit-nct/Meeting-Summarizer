@@ -1,4 +1,5 @@
 import { useRef } from 'react';
+import { UploadSimple, WarningCircle, CheckCircle } from '@phosphor-icons/react';
 import { ACCEPT_ATTR, formatBytes, MAX_UPLOAD_BYTES } from '../../utils/constants.js';
 import UploadProgress from '../UploadProgress/index.jsx';
 import { useDropzone } from './useDropzone.hook.js';
@@ -79,7 +80,7 @@ function IdleZone({ status, error, onClick, onDrop, onDragOver, onDragLeave, onD
             : 'border-fg/15 bg-surface hover:border-accent/60 hover:bg-elevated',
         ].join(' ')}
       >
-        <UploadIcon className={active ? 'text-accent' : 'text-accent/80'} />
+        <UploadSimple size={40} weight="regular" className={`mx-auto ${active ? 'text-accent' : 'text-accent/80'}`} />
         <p className="mt-4 text-lg font-medium text-fg">Drop a file to summarize</p>
         <p className="mt-1 text-sm text-fg-muted">or click to browse</p>
         <p className="mt-6 text-xs text-fg-subtle">
@@ -92,7 +93,7 @@ function IdleZone({ status, error, onClick, onDrop, onDragOver, onDragLeave, onD
           role="alert"
           className="mt-4 flex items-start gap-3 rounded-(--radius-lg) border border-danger/40 bg-danger/10 p-4 text-sm text-danger"
         >
-          <AlertIcon className="mt-0.5 shrink-0" />
+          <WarningCircle size={20} weight="regular" className="mt-0.5 shrink-0" />
           <div className="flex-1">
             <p className="font-medium">{error}</p>
             <button
@@ -115,7 +116,7 @@ function ErrorCard({ file, error, onRetry, onCancel }) {
   return (
     <div className="rounded-(--radius-card) border border-danger/40 bg-danger/10 p-6">
       <div className="flex items-start gap-4">
-        <AlertIcon className="mt-1 shrink-0 text-danger" />
+        <WarningCircle size={20} weight="regular" className="mt-1 shrink-0 text-danger" />
         <div className="min-w-0 flex-1">
           <p className="text-sm font-medium text-fg">Upload failed</p>
           <p className="mt-1 text-sm text-fg-muted">{error}</p>
@@ -146,7 +147,7 @@ function SuccessCard({ file }) {
   return (
     <div className="rounded-(--radius-card) border border-success/40 bg-success/10 p-6">
       <div className="flex items-center gap-4">
-        <CheckIcon className="shrink-0 text-success" />
+        <CheckCircle size={24} weight="regular" className="shrink-0 text-success" />
         <div className="min-w-0 flex-1">
           <p className="text-sm font-medium text-fg">Upload complete</p>
           <p className="truncate text-xs text-fg-muted">
@@ -155,41 +156,5 @@ function SuccessCard({ file }) {
         </div>
       </div>
     </div>
-  );
-}
-
-/* ---------- Icons ---------- */
-
-function UploadIcon({ className = '' }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"
-         strokeLinecap="round" strokeLinejoin="round"
-         className={`mx-auto h-10 w-10 ${className}`} aria-hidden="true">
-      <path d="M12 3v13" />
-      <path d="m7 8 5-5 5 5" />
-      <path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />
-    </svg>
-  );
-}
-
-function AlertIcon({ className = '' }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"
-         strokeLinecap="round" strokeLinejoin="round"
-         className={`h-5 w-5 ${className}`} aria-hidden="true">
-      <circle cx="12" cy="12" r="10" />
-      <path d="M12 8v5" />
-      <path d="M12 16h.01" />
-    </svg>
-  );
-}
-
-function CheckIcon({ className = '' }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-         strokeLinecap="round" strokeLinejoin="round"
-         className={`h-6 w-6 ${className}`} aria-hidden="true">
-      <path d="M20 6 9 17l-5-5" />
-    </svg>
   );
 }

@@ -1,39 +1,154 @@
 @import "tailwindcss";
 
-/* NCT Culture Tech brand tokens.
-   Everything in the app reads from these via Tailwind utilities
-   (bg-canvas, text-accent, border-accent-warm/40, etc.). No hex in components. */
+/* Self-hosted fonts — no <link> to a font CDN in production (design-taste-frontend §3.A/9.A).
+   Geist covers Latin; Be Vietnam Pro is the fallback for Vietnamese diacritics the app must
+   support (FRONTEND.md §8). Browsers fall back per-glyph, so importing only the weights we use
+   keeps the bundle small. */
+@import "@fontsource/geist-sans/400.css";
+@import "@fontsource/geist-sans/500.css";
+@import "@fontsource/geist-sans/600.css";
+@import "@fontsource/geist-sans/700.css";
+@import "@fontsource/geist-mono/400.css";
+@import "@fontsource/geist-mono/500.css";
+@import "@fontsource/be-vietnam-pro/vietnamese-400.css";
+@import "@fontsource/be-vietnam-pro/vietnamese-500.css";
+@import "@fontsource/be-vietnam-pro/vietnamese-600.css";
+@import "@fontsource/be-vietnam-pro/vietnamese-700.css";
+
+/* "Serene Protocol" design tokens — sourced from .claude/DESIGN.md. Everything in the app reads
+   these via Tailwind utilities (bg-surface, text-on-surface, border-outline-variant, etc.).
+   No hex values in components.
+
+   Two token layers live here on purpose:
+   1. The semantic Material-3-shaped scale below, copied 1:1 from DESIGN.md's front matter —
+      the source of truth for anything new.
+   2. A short legacy alias block (canvas/fg/accent/...) so the already-built Dropzone/Recorder/
+      UploadProgress/MeetingDetail draft view (which predate this token pass) keep working
+      unchanged. New code should prefer the semantic names; the aliases just stop working being
+      a reason to rewrite components that already function.
+
+   Radius keys double as Tailwind's built-in --radius-sm/md/lg/xl/2xl scale, so plain
+   `rounded-md` / `rounded-lg` utilities automatically match DESIGN.md's 8px/12px scale too. */
 @theme {
-  /* Backgrounds */
-  --color-canvas: rgb(11 18 34);
-  --color-surface: rgb(21 28 46);
-  --color-elevated: rgb(30 40 62);
+  /* Surfaces */
+  --color-surface: #f9f9f9;
+  --color-surface-dim: #dadada;
+  --color-surface-bright: #f9f9f9;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-low: #f3f3f3;
+  --color-surface-container: #eeeeee;
+  --color-surface-container-high: #e8e8e8;
+  --color-surface-container-highest: #e2e2e2;
+  --color-surface-variant: #e2e2e2;
+  --color-background: #f9f9f9;
+  --color-on-background: #1b1b1b;
 
-  /* Foreground */
-  --color-fg: rgb(248 250 252);
-  --color-fg-muted: rgb(148 163 184);
-  --color-fg-subtle: rgb(100 116 139);
-  --color-fg-inverse: rgb(11 18 34);
+  /* Text / outline on surface */
+  --color-on-surface: #1b1b1b;
+  --color-on-surface-variant: #3f484c;
+  --color-inverse-surface: #303030;
+  --color-inverse-on-surface: #f1f1f1;
+  --color-outline: #6f797d;
+  --color-outline-variant: #bec8cc;
 
-  /* NCT brand accents */
-  --color-accent: rgb(125 211 252);          /* cyan — primary */
-  --color-accent-warm: rgb(250 204 21);      /* yellow — secondary highlight */
-  --color-accent-pink: rgb(217 70 239);      /* magenta */
-  --color-accent-orange: rgb(251 146 60);
-  --color-accent-green: rgb(74 222 128);
-  --color-accent-purple: rgb(167 139 250);
+  /* Primary — teal. Actions, links, active/selected state. Never decorative. */
+  --color-surface-tint: #00677d;
+  --color-primary: #00657a;
+  --color-on-primary: #ffffff;
+  --color-primary-container: #237e96;
+  --color-on-primary-container: #fafdff;
+  --color-inverse-primary: #81d2ec;
+  --color-primary-fixed: #b3ebff;
+  --color-primary-fixed-dim: #81d2ec;
+  --color-on-primary-fixed: #001f27;
+  --color-on-primary-fixed-variant: #004e5f;
 
-  /* Semantic */
-  --color-danger: rgb(248 113 113);
-  --color-success: rgb(74 222 128);
+  /* Secondary — amber. Highlights, tags, "aha" callouts. Never a primary CTA. */
+  --color-secondary: #815600;
+  --color-on-secondary: #ffffff;
+  --color-secondary-container: #fdb644;
+  --color-on-secondary-container: #6f4900;
+  --color-secondary-fixed: #ffddb1;
+  --color-secondary-fixed-dim: #ffba4b;
+  --color-on-secondary-fixed: #291800;
+  --color-on-secondary-fixed-variant: #624000;
 
-  /* Radii */
-  --radius-card: 1rem;
-  --radius-lg: 0.75rem;
+  /* Tertiary — slate. Reserved for categorical/neutral coding (e.g. file-kind glyphs), never a
+     brand accent (DESIGN.md "color role lock": exactly two brand accents, no third). */
+  --color-tertiary: #555c6a;
+  --color-on-tertiary: #ffffff;
+  --color-tertiary-container: #6e7583;
+  --color-on-tertiary-container: #fefcff;
+  --color-tertiary-fixed: #dce2f3;
+  --color-tertiary-fixed-dim: #c0c7d6;
+  --color-on-tertiary-fixed: #151c27;
+  --color-on-tertiary-fixed-variant: #404754;
+
+  /* Error */
+  --color-error: #ba1a1a;
+  --color-on-error: #ffffff;
+  --color-error-container: #ffdad6;
+  --color-on-error-container: #93000a;
+
+  /* Success — not in DESIGN.md's original scale (M3 export has no success role); added as a
+     desaturated green tonal pair consistent with the rest of the palette, for the same
+     accept/complete states other components already assume exist (uploaded, action item done). */
+  --color-success: #2f7d5c;
+  --color-on-success: #ffffff;
+  --color-success-container: #d7f2e6;
+  --color-on-success-container: #08432f;
+
+  /* Categorical (file-kind, non-brand) — deliberately reuses primary/secondary/tertiary/outline
+     rather than introducing a rainbow of extra accents (TASTE.md "explicitly rejected"). */
+  --color-cat-audio: var(--color-primary);
+  --color-cat-video: var(--color-tertiary);
+  --color-cat-text: var(--color-secondary);
+  --color-cat-other: var(--color-outline);
+
+  /* Categorical (summary-point kind) — FRONTEND.md §8 explicitly wants six distinguishable
+     category colors (decision/action/question/blocker/risk/discussion) for summary bullets.
+     That's a bounded, always-labeled classification system, not a brand accent, so it's kept
+     separate from the two-accent brand lock above; reuses tokens where a hue already exists
+     and adds exactly two new muted ones (action, risk) rather than a full rainbow. */
+  --color-cat-decision: var(--color-success);
+  --color-cat-action: #3d5a99;
+  --color-cat-question: var(--color-secondary);
+  --color-cat-blocker: var(--color-error);
+  --color-cat-risk: #b75e20;
+  --color-cat-discussion: var(--color-outline);
+
+  /* Legacy aliases — see file header. */
+  --color-canvas: var(--color-background);
+  --color-elevated: var(--color-surface-container);
+  --color-fg: var(--color-on-surface);
+  --color-fg-muted: var(--color-on-surface-variant);
+  --color-fg-subtle: var(--color-outline);
+  --color-fg-inverse: var(--color-inverse-on-surface);
+  --color-accent: var(--color-primary);
+  --color-accent-warm: var(--color-secondary);
+  --color-danger: var(--color-error);
+
+  /* Radius — DESIGN.md scale: sm .25rem, DEFAULT .5rem (buttons/inputs), md .75rem,
+     lg/xl 1rem-1.5rem (cards), full pill. */
+  --radius-xs: 0.25rem;
+  --radius-sm: 0.25rem;
   --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-2xl: 1.5rem;
+  --radius-full: 9999px;
+  --radius-card: 1rem;
 
-  /* Fonts */
-  --font-sans: 'Inter', 'Be Vietnam Pro', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  /* Type */
+  --font-sans: 'Geist Sans', 'Be Vietnam Pro', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'Geist Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+
+  /* Spacing rhythm (DESIGN.md §Layout & Spacing) */
+  --spacing-stack-sm: 0.5rem;
+  --spacing-stack-md: 1rem;
+  --spacing-stack-lg: 2rem;
+  --spacing-section-gap: 4rem;
+  --container-reading: 46rem;
 }
 
 @layer base {
@@ -41,10 +156,46 @@
     min-height: 100dvh;
   }
   body {
-    background-color: var(--color-canvas);
-    color: var(--color-fg);
+    background-color: var(--color-background);
+    color: var(--color-on-surface);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+  }
+  ::selection {
+    background-color: color-mix(in srgb, var(--color-primary) 25%, transparent);
+  }
+}
+
+/* Quiet, functional motion only (MOTION_INTENSITY: 3 — DESIGN.md §Motion). transform/opacity
+   only, honors prefers-reduced-motion, no perpetual loops. */
+@layer utilities {
+  @keyframes fade-in-up {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes shimmer {
+    from { background-position: -200% 0; }
+    to { background-position: 200% 0; }
+  }
+  .animate-fade-in-up {
+    animation: fade-in-up 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  .animate-shimmer {
+    background-image: linear-gradient(
+      90deg,
+      var(--color-surface-container-high) 25%,
+      var(--color-surface-container-highest) 37%,
+      var(--color-surface-container-high) 63%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.6s ease-in-out infinite;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in-up,
+  .animate-shimmer {
+    animation: none !important;
   }
 }

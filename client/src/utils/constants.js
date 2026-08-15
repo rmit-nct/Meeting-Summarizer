@@ -35,3 +35,27 @@ export function formatBytes(n) {
   if (n < 1024 * 1024 * 1024) return `${(n / 1024 / 1024).toFixed(1)} MB`;
   return `${(n / 1024 / 1024 / 1024).toFixed(2)} GB`;
 }
+
+// Summary-point categories. Colors live in index.css (--color-cat-*) — see the comment there
+// for why this is a separate, bounded palette from the two brand accents. Never color alone:
+// every usage pairs this with `label`.
+export const CATEGORY_META = {
+  decision: { label: 'Decision', className: 'bg-cat-decision/10 text-cat-decision' },
+  action: { label: 'Action', className: 'bg-cat-action/10 text-cat-action' },
+  question: { label: 'Question', className: 'bg-cat-question/10 text-cat-question' },
+  blocker: { label: 'Blocker', className: 'bg-cat-blocker/10 text-cat-blocker' },
+  risk: { label: 'Risk', className: 'bg-cat-risk/10 text-cat-risk' },
+  discussion: { label: 'Discussion', className: 'bg-cat-discussion/10 text-cat-discussion' },
+};
+
+// meeting.status → step label, drives StatusStepper and MeetingList badges.
+export const STATUS_STEPS = ['uploaded', 'transcribing', 'summarizing', 'completed'];
+
+export const STATUS_META = {
+  draft: { label: 'Draft', tone: 'secondary' },
+  uploaded: { label: 'Queued', tone: 'neutral' },
+  transcribing: { label: 'Transcribing', tone: 'primary' },
+  summarizing: { label: 'Summarizing', tone: 'primary' },
+  completed: { label: 'Completed', tone: 'success' },
+  failed: { label: 'Failed', tone: 'error' },
+};
