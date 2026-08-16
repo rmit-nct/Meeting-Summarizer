@@ -1,1 +1,1 @@
-// Public contract: exposes verifyToken()/getUser() to middleware/authenticate.js and socket handshakes.
+export { verifyAccessToken, getUserById } from './auth.service.js';
