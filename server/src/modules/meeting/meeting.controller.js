@@ -1,4 +1,4 @@
-// HTTP-shaped: create, list, update, remove. See ENDPOINTS.md §2.
+// HTTP-shaped: create, list, update, upload, remove. See ENDPOINTS.md §2, §5.
 import { meetingService } from './meeting.service.js';
 import { meetingValidator } from './meeting.validator.js';
 import { success, paginate } from '../../shared/response.js';
@@ -6,9 +6,7 @@ import { validationFailed } from '../../shared/errors.js';
 
 // Controllers do three things and no more: read req, call the service, shape
 // the response. No supabase, no business rules, and no res.status(4xx) —
-// errors are thrown and middleware/errorHandler.js formats them. Every handler
-// is wrapped in try/catch because Express 5 does forward async rejections, but
-// being explicit keeps the pattern uniform across the whole team.
+// errors are thrown and middleware/errorHandler.js formats them.
 
 export async function create(req, res, next) {
   try {
@@ -55,6 +53,17 @@ export async function update(req, res, next) {
   }
 }
 
+// Returns { meeting, upload: { signedUrl, path, token } }. The client then PUTs
+// the file to signedUrl itself — this endpoint never touches the bytes.
+export async function upload(req, res, next) {
+  try {
+    const result = await meetingService.attachUpload(req.user.id, req.params.id, req.body);
+    res.json(success(result));
+  } catch (err) {
+    next(err);
+  }
+}
+
 export async function remove(req, res, next) {
   try {
     const result = await meetingService.remove(req.user.id, req.params.id);
@@ -64,4 +73,4 @@ export async function remove(req, res, next) {
   }
 }
 
-export const meetingController = { create, list, detail, update, remove };
+export const meetingController = { create, list, detail, update, upload, remove };

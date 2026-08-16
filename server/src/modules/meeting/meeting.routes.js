@@ -3,11 +3,12 @@ import { validate } from '../../middleware/validate.js';
 import { meetingValidator } from './meeting.validator.js';
 import { meetingController } from './meeting.controller.js';
 
-// Mounted at /api/meetings in app.js. See ENDPOINTS.md §2.
+// Mounted at /api/meetings in app.js. See ENDPOINTS.md §2, §5.
 const router = Router();
 
 router.post('/', validate(meetingValidator.create), meetingController.create);
 router.get('/', meetingController.list);
+router.post('/:id/upload', validate(meetingValidator.upload), meetingController.upload);
 router.patch('/:id', validate(meetingValidator.update), meetingController.update);
 router.delete('/:id', meetingController.remove);
 
@@ -18,6 +19,5 @@ router.delete('/:id', meetingController.remove);
 // aggregator and the detail page will render an empty summary.
 //
 // meetingController.detail exists for internal use and for debugging only.
-// TODO (card #11): router.post('/:id/upload', ...) — signed upload URL.
 
 export default router;
