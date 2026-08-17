@@ -16,16 +16,31 @@ coupled only through REST (`/api/*`) and WebSocket (`/rt`). Backend is a Modular
 with strict N-Tier layering per module; frontend is package-based components. Full rationale:
 `docs/system.doc/ARCHITECTURE.md`.
 
-## Repo is mid-scaffold — implementation status varies by module
+## Implementation status
 
-Every backend/frontend module exists as files; most business logic files
-(`*.service.js`, `*.repository.js`, `*.controller.js`, `*.validator.js`, `*.dto.js`,
-`*.interface.js`, prompts, export renderers) are still genuinely empty — one comment
-pointing at the doc section to implement from — but `transcript` and `processing` are now
-fully implemented, and `meeting` has a real repository/interface but no controller,
-service, or live routes yet (so there's no HTTP endpoint to create a meeting yet — that's
-the current gap). Everything else, and all of `client/`, is still empty scaffold. See
-`docs/CLAUDE.md` §0 for the exact per-module breakdown before assuming a file is empty.
+**Backend:** the full upload → transcribe → summarize → persist pipeline is implemented
+as application code — `meeting`, `transcript` (Whisper + a Strategy/Factory parser set for
+`.vtt`/`.srt`/`.txt`/`.md`), `summary` (Groq Llama, validated JSON normalization),
+`action-item`, `overview`, and `processing` all have real controllers/services/
+repositories/routes. `auth` verifies a Supabase JWT (verification-only by design, not a
+gap). Still scaffold: `user`, `export`, `live-session`. **Not yet runnable end-to-end:**
+`server/supabase/migrations/` has no migration for `summaries`/`summary_points`/
+`speakers`/`action_items` — that schema/config work belongs to another team member and
+merges separately; this pass stayed strictly on the application-code side. See
+`docs/CLAUDE.md` §0's "Schema gap, intentional" note before adding a migration yourself.
+
+**Frontend:** every page and component package's `index.jsx` is real, finished UI built
+against the `.claude/DESIGN.md`/`.claude/TASTE.md` design system. Wiring to the real API is
+now per-component: `MeetingDetail`, `ProcessingStatus` (real socket + polling fallback),
+`ActionItemList`, `SpeakerLegend`, `UploadProgress`'s data source (`utils/upload.js`), and
+`NewMeeting` are wired. `MeetingHistory` and `auth.store.js` still simulate — and because
+`auth.store.js`'s mock session token isn't a real JWT, the socket handshake currently
+rejects it, so `ProcessingStatus` runs on its polling fallback until `auth.store.js` is
+wired to real Supabase Auth.
+
+See `docs/CLAUDE.md` §0 for the exact per-module/per-component breakdown, and
+`docs/server.doc/FROM_MEETING_TO_JSON_PLAN.md` for the pipeline's design rationale, before
+assuming a file is empty or a page is backed by real data.
 
 ## Commands
 

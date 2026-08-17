@@ -10,32 +10,93 @@ Read this file first. It is the index; the detail lives in the linked docs.
 ## 0. Current state of the code
 
 The repo started at the **scaffold stage** (see `SCAFFOLD.md`) and is now partway through
-implementation, unevenly across modules. Business files (`*.service.js`,
-`*.repository.js`, `*.controller.js`, `*.validator.js`, `*.dto.js`, `*.interface.js`,
-prompts, export renderers) that are still genuinely empty carry a single comment pointing
-at the doc section to implement from — for those, read the referenced doc section instead
-of the file. Where a module below is marked implemented, read the file itself.
+implementation, unevenly across modules and unevenly *between the two apps* — the backend
+is implemented bottom-up (data pipeline first), the frontend is implemented top-down (UI
+first, data wiring last). Business files (`*.service.js`, `*.repository.js`,
+`*.controller.js`, `*.validator.js`, `*.dto.js`, `*.interface.js`, prompts, export
+renderers) that are still genuinely empty carry a single comment pointing at the doc
+section to implement from — for those, read the referenced doc section instead of the
+file. Where a module below is marked implemented, read the file itself.
 
-- **Implemented:** `transcript` (full ffmpeg + Groq Whisper pipeline in
-  `transcript.service.js`, real repository, interface, event publishing) and `processing`
-  (controller/service/validator wire `POST /api/meetings/:id/process` and
-  `GET /api/meetings/:id/status`, orchestrating via the event bus). `processing.socket.js`
-  is still a stub.
-- **Partial:** `meeting.repository.js` and `meeting.interface.js` are real (status
-  transitions, `userId`-scoped queries), but `meeting.controller.js`, `meeting.service.js`,
-  `meeting.validator.js`, and `meeting.dto.js` are still empty, and `meeting.routes.js` has
-  no live routes. **There is currently no HTTP endpoint to create, list, or attach a file
-  to a meeting** — `processing`'s two endpoints assume a meeting row already exists.
-- **Still scaffold** (route file is a shell at most, everything else empty): `auth`,
-  `user`, `summary` (including `summary.prompts.js` — no real prompts yet), `action-item`,
-  `overview`, `export`, `live-session`. All of `client/` is still scaffold — every
-  component package is 1–4 line placeholder files; no business logic on the frontend yet.
+### Backend (`server/`)
 
-Because `transcript`/`processing` were built ahead of `auth`/`user`/`meeting`, the
-practical next gap is finishing `meeting`'s controller/service/validator/dto/routes so a
-meeting can actually be created and a file attached end-to-end — do that before extending
-`summary` or later stages. `.env` files already contain placeholder (`replace-me`) values
-that satisfy env validation at boot — they are not real Supabase/Groq credentials.
+- **Implemented — application code, not yet fully runnable end-to-end (see the schema note
+  below):** `meeting` (create/list/update/delete, `POST /:id/upload` issuing a signed
+  Storage URL), `transcript` (ffmpeg + Groq Whisper for audio/video, plus a Strategy+Factory
+  parser set — `transcript/parsers/` — for `.vtt`/`.srt`/`.txt`/`.md`, see
+  `FROM_MEETING_TO_JSON_PLAN.md` §3), `summary` (Groq Llama call, defensive JSON
+  parse/validate/retry-once, tempId-based normalization into `summaries`/`summary_points`/
+  `speakers` — see `FROM_MEETING_TO_JSON_PLAN.md` §4-§6), `action-item` (CRUD + the
+  additive seed/merge insert from summary output), `overview` (the composed `GET /:id`
+  aggregate), and `processing` (status machine, socket progress, `/process` retry that
+  redirects to resummarize when a transcript already exists, `/resummarize`).
+  `middleware/authenticate.js` and `modules/auth/` verify a real Supabase-shaped JWT
+  (HS256 against `SUPABASE_JWT_SECRET`) — sign-in/up/out are still entirely client-side
+  against Supabase Auth per the architecture, this module only verifies.
+- **Schema gap, intentional:** `server/supabase/migrations/` currently only has
+  `meetings` and `transcripts` (pre-existing). There is **no migration for `summaries`,
+  `summary_points`, `speakers`, or `action_items`** — Supabase schema/config setup belongs
+  to another team member and is merged separately; this pass deliberately stayed on the
+  "connect the repository to the database" side (repositories, services, routes) and did
+  not add or modify migrations. Until that migration is merged, everything from
+  `summary`/`action-item` onward in the pipeline will fail at the Supabase call with
+  "relation does not exist" — that is expected, not a bug to chase. `meeting.repository.js`
+  and `transcript.repository.js` were deliberately kept to the exact shape of the two
+  migrations that already exist (no new columns, no changed RPC signatures) for the same
+  reason — see the "status filter" and "source_kind" notes in `MODELS.md` §5 and
+  `transcript.repository.js` for the specific things that had to be routed around rather
+  than added to the schema.
+- **Still scaffold:** `user`, `export`, `live-session`. `auth` is verification-only by
+  design (`ARCHITECTURE.md` §2.2) — there is no `auth.controller.js`/`auth.routes.js` to
+  build; that's not a gap.
+- A stray `server/supabase/202608120001_auth.sql` (outside `migrations/`) defines a
+  **custom `public.users` + `refresh_tokens` schema with `password_hash`** — this
+  contradicts the Supabase-Auth-only design in `MODELS.md`/`ARCHITECTURE.md` and was never
+  reconciled by whichever branch introduced it. Nothing in the implemented backend reads
+  from it. Flagged here, not fixed — deciding whether to delete it or migrate real auth
+  onto it is a scope decision for the team, not an incidental cleanup.
+
+The practical next backend gaps are `user` (profile display name/avatar — small) and
+`export` (Markdown/PDF rendering from the same composed `overview` payload).
+
+### Frontend (`client/`)
+
+Every page and every component package's `index.jsx` is real, finished JSX built against
+the "Serene Protocol" design system (tokens in `.claude/DESIGN.md`, rationale in
+`.claude/TASTE.md`). Wiring to the real backend is now **per-component, not all-or-nothing
+— check the specific piece before assuming it's still mock-driven**:
+
+- **Wired to the real API:** `MeetingDetail` (fetches `GET /:id` via
+  `useMeetingDetail.hook.js`; no more `mockData.js`), `ProcessingStatus` (real socket
+  subscription + 3s polling fallback per `FRONTEND.md` §5, wired through
+  `stores/socket.store.js`, which now holds a real `socket.io-client` connection created
+  when `auth.store.js`'s `status` becomes `'authenticated'`), `ActionItemList` and
+  `SpeakerLegend` (own local optimistic state seeded from the parent's fetch, since there's
+  no global meetings store — mutate via `*.service.js`, roll back on failure),
+  `UploadProgress`'s actual data source `utils/upload.js` (signed URL → PUT → trigger
+  processing), and `NewMeeting` (`POST /api/meetings`).
+- **Still mock/simulated:** `Dropzone`/`Recorder`'s own internals were **not** touched by
+  this pass — they already call `utils/upload.js`, which is now real, so uploading through
+  them works, but their component code itself wasn't part of this integration and hasn't
+  been re-verified beyond that. `MeetingHistory`/`useMeetingList` still reads
+  `utils/mockData.js`. `useAuthStore` (`stores/auth.store.js`) still simulates
+  `signIn`/`signUp`/`signOut` against an in-memory fake — **this is why the socket rarely
+  connects in practice today**: it hands out `session.access_token = 'mock-token'`, which
+  is not a real JWT, so `config/socket.js`'s handshake verification rejects it and
+  `ProcessingStatus` always falls back to polling. Wiring `auth.store.js` to real
+  `supabase.auth.*` is what unblocks the socket path.
+- `TranscriptView`/`SummaryView` remain presentational-only by design (driven entirely by
+  props from `MeetingDetail`) — their `*.service.js`/`*.hook.js` files are still the
+  documented empty stub, correctly.
+
+**Do not assume a finished-looking page proves its backend integration works** — check
+whether the specific hook behind it still imports from `utils/mockData.js` before relying
+on it.
+
+### Both
+
+`.env` files already contain placeholder (`replace-me`) values that satisfy env validation
+at boot — they are not real Supabase/Groq credentials.
 
 There are no automated tests in this repository yet (`npm test` at the root and in
 `server/` is an unset placeholder). Verify changes with the smoke test in `SCAFFOLD.md` §15
@@ -68,7 +129,7 @@ authority. This table is the concrete technology mapping.
 | Language | **JavaScript (ESM), Node 20+** | Matches the team's existing convention (`index.jsx`, `*.hook.js`, `*.service.js`). The brief allows JS or TS. Zod covers the validation that types would otherwise catch. |
 | Frontend | **React 19 + Vite + React Router** | Static SPA build. Not Next.js — the backend is a separate long-running service. |
 | Frontend state | **Zustand** for global stores | One store per cross-cutting concern (auth, socket, ui). |
-| Styling | **Co-located CSS per component package** (`ComponentName.css`) + `client/src/styles/tokens.css` | Follows the package-based componentization rule. No competing component library. |
+| Styling | **Tailwind CSS v4** (`@tailwindcss/vite`) utility classes, driven by design tokens defined in `client/src/index.css` | Token source of truth is `.claude/DESIGN.md` ("Serene Protocol" system); rationale/history in `.claude/TASTE.md`. Some component packages still carry an unused co-located `ComponentName.css` left from the pre-Tailwind scaffold — don't assume one is wired in just because it exists. |
 | Backend | **Express 5 + Socket.IO**, one process | HTTP and WebSocket bootstrapped from the same entry point. |
 | Validation | **Zod**, in each module's `*.validator.js` | Inbound boundary of every module. |
 | DB | **Supabase Postgres** | Brief requirement. Accessed through `supabase-js` (service role) inside repositories only. |
@@ -95,6 +156,11 @@ authority. This table is the concrete technology mapping.
 | `SETUP.md` | Env vars, local setup, Supabase setup, deploying either app. |
 | `DELIVERABLES.md` | Anything about submission: README, Gantt, Trello, demo video, weekly reports. |
 | `LESSONS_FROM_TUTORBOT.md` | **Read once before writing any code.** Concrete mistakes from the predecessor project that must not be repeated. |
+
+Two more files, outside `docs/` but load-bearing for frontend work: `.claude/DESIGN.md`
+(concrete design tokens — colors, type scale, spacing) and `.claude/TASTE.md` (the standing
+visual-style preference behind those tokens, "Serene Protocol"). Read both before adding or
+restyling any client UI.
 
 ---
 

@@ -14,3 +14,8 @@ export const unauthorized = (message = 'Unauthorized', details) => new AppError(
 export const forbidden = (message = 'Forbidden', details) => new AppError('forbidden', message, 403, details);
 export const validationFailed = (message = 'Validation failed', details) => new AppError('validation_failed', message, 400, details);
 export const invalidState = (message = 'Invalid state', details) => new AppError('invalid_state', message, 409, details);
+export const unsupportedMediaType = (message = 'Unsupported file type', details) => new AppError('unsupported_media_type', message, 400, details);
+export const fileTooLarge = (message = 'File is too large', details) => new AppError('file_too_large', message, 400, details);
+export const rateLimited = (message = 'Rate limited, please retry shortly', retryAfterMs) =>
+  new AppError('rate_limited', message, 429, retryAfterMs != null ? { retryAfterMs } : undefined);
+export const aiProviderError = (message = 'AI provider error', details) => new AppError('ai_provider_error', message, 502, details);

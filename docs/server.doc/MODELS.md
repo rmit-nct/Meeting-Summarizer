@@ -104,7 +104,7 @@ One-to-one with `meetings`.
 | `meeting_id` | `uuid` **unique** | cascade |
 | `user_id` | `uuid` | denormalized for repository scoping |
 | `full_text` | `text` | |
-| `segments` | `jsonb` | Whisper `verbose_json` segments, trimmed to `[{ id, start, end, text }]` |
+| `segments` | `jsonb` | `[{ id, start, end, text }]`, seconds — Whisper's `verbose_json` segments trimmed down, or the equivalent shape from a subtitle parse. `[]` for raw-text sources. |
 | `language` | `text` null | |
 | `model` | `text` | e.g. `whisper-large-v3` |
 | `word_count` | `int` | |
@@ -292,6 +292,13 @@ $$;
 
 The `meeting` repository calls it via `supabase.rpc('search_meetings', …)`. A matching
 `count_meetings(...)` function supplies `meta.total` for the pagination envelope.
+
+Note this signature has no `status` parameter, even though `GET /api/meetings`'s
+`status` filter (`ENDPOINTS.md` §2) is a real, separate query the repository runs directly
+against `meetings` (not through this function) when `status` is present — see
+`meeting.repository.js`. Folding `status` into this function is the natural next step once
+whoever owns the Supabase migrations adds it; until then this stays exactly as originally
+specced here to avoid drifting from the migration that actually exists.
 
 Note the join reaches `transcripts` and `summaries`, which other modules own. This is the
 one accepted exception, contained inside a database function rather than in module code —

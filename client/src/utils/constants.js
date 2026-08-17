@@ -12,12 +12,12 @@ export const ACCEPTED_AUDIO = [
 
 export const ACCEPTED_VIDEO = ['video/mp4', 'video/webm', 'video/quicktime'];
 
-export const ACCEPTED_TEXT = ['text/plain', 'text/vtt', 'application/x-subrip'];
+export const ACCEPTED_TEXT = ['text/plain', 'text/vtt', 'application/x-subrip', 'text/markdown'];
 
 export const ACCEPTED_MIME = [...ACCEPTED_AUDIO, ...ACCEPTED_VIDEO, ...ACCEPTED_TEXT];
 
 // For <input accept="..."> — MIME groups + extensions for broadest picker compat.
-export const ACCEPT_ATTR = 'audio/*,video/*,.srt,.vtt,.txt';
+export const ACCEPT_ATTR = 'audio/*,video/*,.srt,.vtt,.txt,.md';
 
 // 500 MB — matches server MAX_UPLOAD_BYTES default.
 export const MAX_UPLOAD_BYTES = 524_288_000;

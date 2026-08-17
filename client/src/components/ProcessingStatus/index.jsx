@@ -2,32 +2,39 @@ import Card from '../ui/Card/index.jsx';
 import StatusStepper from './sub-components/StatusStepper.jsx';
 import FailureNotice from './sub-components/FailureNotice.jsx';
 import { useProcessingStatus } from './useProcessingStatus.hook.js';
-import { setStatus as setMockStatus } from '../../utils/mockData.js';
 
 // ProcessingStatus — the pipeline stepper. Renders from `status`, never from "did a request
 // come back yet", so the socket and polling-fallback transports stay indistinguishable to the
-// user (FRONTEND.md §5). See useProcessingStatus.hook.js for what's simulated vs. real today.
-export default function ProcessingStatus({ meetingId, status, errorMessage }) {
+// user (FRONTEND.md §5). `onStatusChange` lets MeetingDetail's own hook mirror the live status
+// without owning the socket subscription itself.
+export default function ProcessingStatus({ meetingId, status, errorMessage, onStatusChange }) {
   if (status === 'failed') {
-    return (
-      <FailureNotice
-        message={errorMessage ?? 'Something went wrong while summarizing this meeting.'}
-        onRetry={() => setMockStatus(meetingId, 'uploaded')}
-      />
-    );
+    return <FailedState meetingId={meetingId} initialStatus={status} errorMessage={errorMessage} onStatusChange={onStatusChange} />;
   }
 
-  return <InProgress meetingId={meetingId} status={status} />;
+  return <InProgress meetingId={meetingId} status={status} onStatusChange={onStatusChange} />;
 }
 
-function InProgress({ meetingId, status }) {
-  const { step, steps, currentIndex, timedOut } = useProcessingStatus(meetingId, status);
+function FailedState({ meetingId, initialStatus, errorMessage, onStatusChange }) {
+  const { retry, retrying } = useProcessingStatus(meetingId, initialStatus, { onStatusChange });
+  return (
+    <FailureNotice
+      message={errorMessage ?? 'Something went wrong while summarizing this meeting.'}
+      onRetry={retry}
+      retrying={retrying}
+    />
+  );
+}
+
+function InProgress({ meetingId, status, onStatusChange }) {
+  const { step, steps, currentIndex, timedOut, retry, retrying } = useProcessingStatus(meetingId, status, { onStatusChange });
 
   if (timedOut) {
     return (
       <FailureNotice
         message="This is taking longer than expected. You can try again or check back shortly."
-        onRetry={() => setMockStatus(meetingId, 'uploaded')}
+        onRetry={retry}
+        retrying={retrying}
       />
     );
   }

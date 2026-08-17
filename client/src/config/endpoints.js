@@ -4,6 +4,7 @@ export const ENDPOINTS = {
     create:      () => '/api/meetings',
     list:        () => '/api/meetings',
     detail:      (id) => `/api/meetings/${id}`,
+    upload:      (id) => `/api/meetings/${id}/upload`,
     process:     (id) => `/api/meetings/${id}/process`,
     resummarize: (id) => `/api/meetings/${id}/resummarize`,
     status:      (id) => `/api/meetings/${id}/status`,

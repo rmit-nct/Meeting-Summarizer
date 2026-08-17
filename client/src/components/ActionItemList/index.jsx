@@ -5,8 +5,8 @@ import { useActionItemList } from './useActionItemList.hook.js';
 
 // ActionItemList — checkbox, inline edit of content/owner/due date, add, delete.
 // See FRONTEND.md §3.
-export default function ActionItemList({ meetingId, items }) {
-  const { toggle, update, add, remove } = useActionItemList(meetingId);
+export default function ActionItemList({ meetingId, items: initialItems }) {
+  const { items, toggle, update, add, remove } = useActionItemList(meetingId, initialItems);
   const [adding, setAdding] = useState(false);
 
   return (

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, UsersThree, Clock } from '@phosphor-icons/react';
+import { ArrowLeft, Clock } from '@phosphor-icons/react';
 import Dropzone from '../../components/Dropzone/index.jsx';
 import Recorder from '../../components/Recorder/index.jsx';
 import ProcessingStatus from '../../components/ProcessingStatus/index.jsx';
@@ -10,21 +10,30 @@ import ActionItemList from '../../components/ActionItemList/index.jsx';
 import SpeakerLegend from '../../components/SpeakerLegend/index.jsx';
 import ExportMenu from '../../components/ExportMenu/index.jsx';
 import EmptyState from '../../components/ui/EmptyState/index.jsx';
+import Skeleton from '../../components/ui/Skeleton/index.jsx';
 import Badge from '../../components/ui/Badge/index.jsx';
 import Button from '../../components/ui/Button/index.jsx';
 import { STATUS_META } from '../../utils/constants.js';
 import { formatDate, formatDurationMinutes } from '../../utils/format.js';
-import { useMockMeetings, getOverview, setStatus } from '../../utils/mockData.js';
+import { useMeetingDetail } from './useMeetingDetail.hook.js';
 
 // MeetingDetail — status-driven composition (FRONTEND.md §2). What renders below the header
-// depends entirely on `meeting.status`, read from the mock store until GET /api/meetings/:id
-// (the `overview` aggregate) is live — the branches here already match that response shape.
+// depends entirely on `meeting.status`, read from GET /api/meetings/:id (the `overview`
+// aggregate, ENDPOINTS.md §2).
 export default function MeetingDetail() {
   const { id } = useParams();
-  const meetings = useMockMeetings(); // subscribes so this page re-renders on any mock mutation
-  const meeting = meetings.find((m) => m.id === id);
+  const { loading, error, data, refetch, handleStatusChange } = useMeetingDetail(id);
 
-  if (!meeting) {
+  if (loading && !data) {
+    return (
+      <div className="mx-auto w-full max-w-4xl px-4 py-10 sm:px-6 sm:py-12">
+        <Skeleton className="h-8 w-64" />
+        <Skeleton className="mt-4 h-40 w-full" />
+      </div>
+    );
+  }
+
+  if (error || !data) {
     return (
       <div className="mx-auto w-full max-w-3xl px-4 py-16">
         <EmptyState
@@ -36,6 +45,7 @@ export default function MeetingDetail() {
     );
   }
 
+  const { meeting, transcript, summary, actionItems, speakers } = data;
   const statusMeta = STATUS_META[meeting.status] ?? STATUS_META.draft;
 
   return (
@@ -52,11 +62,7 @@ export default function MeetingDetail() {
             <Badge tone={statusMeta.tone} dot>{statusMeta.label}</Badge>
           </div>
           <div className="mt-2 flex flex-wrap items-center gap-4 text-sm text-on-surface-variant">
-            <span>{formatDate(meeting.meetingDate, { month: 'long' })}</span>
-            <span className="flex items-center gap-1.5">
-              <UsersThree size={15} weight="regular" />
-              {meeting.attendeeCount} attendees
-            </span>
+            {meeting.meetingDate && <span>{formatDate(meeting.meetingDate, { month: 'long' })}</span>}
             {meeting.durationSeconds > 0 && (
               <span className="flex items-center gap-1.5">
                 <Clock size={15} weight="regular" />
@@ -69,19 +75,30 @@ export default function MeetingDetail() {
       </header>
 
       <div className="mt-8">
-        {meeting.status === 'draft' && <DraftBody meeting={meeting} />}
+        {meeting.status === 'draft' && <DraftBody meeting={meeting} onUploaded={refetch} />}
         {['uploaded', 'transcribing', 'summarizing', 'failed'].includes(meeting.status) && (
-          <ProcessingStatus meetingId={meeting.id} status={meeting.status} errorMessage={meeting.errorMessage} />
+          <ProcessingStatus
+            meetingId={meeting.id}
+            status={meeting.status}
+            errorMessage={meeting.errorMessage}
+            onStatusChange={handleStatusChange}
+          />
         )}
-        {meeting.status === 'completed' && <CompletedBody meeting={meeting} />}
+        {meeting.status === 'completed' && (
+          <CompletedBody
+            meetingId={meeting.id}
+            transcript={transcript}
+            summary={summary}
+            actionItems={actionItems}
+            speakers={speakers}
+          />
+        )}
       </div>
     </div>
   );
 }
 
-function DraftBody({ meeting }) {
-  const onUploaded = () => setStatus(meeting.id, 'transcribing');
-
+function DraftBody({ meeting, onUploaded }) {
   return (
     <section className="space-y-6">
       <Dropzone meetingId={meeting.id} onUploaded={onUploaded} />
@@ -112,16 +129,15 @@ const TABS = [
   { key: 'speakers', label: 'Speakers' },
 ];
 
-function CompletedBody({ meeting }) {
-  const overview = getOverview(meeting.id);
+function CompletedBody({ meetingId, transcript, summary, actionItems, speakers }) {
   const [tab, setTab] = useState('summary');
   const [highlightMs, setHighlightMs] = useState(null);
 
-  if (!overview) {
+  if (!summary) {
     return (
       <EmptyState
-        title="No summary content for this preview meeting"
-        description="This meeting was created in the UI preview, so there's no transcript to summarize yet. Open one of the seeded example meetings from the list to see the full completed view."
+        title="No summary yet"
+        description="This meeting is marked completed but has no summary on file — try resummarizing from the meeting's status panel."
         action={<Button to="/meetings" variant="outline">Back to meetings</Button>}
       />
     );
@@ -146,9 +162,9 @@ function CompletedBody({ meeting }) {
             ].join(' ')}
           >
             {label}
-            {key === 'actions' && overview.actionItems.some((a) => !a.isDone) && (
+            {key === 'actions' && actionItems.some((a) => !a.isDone) && (
               <span className="ml-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-secondary-container/60 px-1 text-[10px] text-on-secondary-container">
-                {overview.actionItems.filter((a) => !a.isDone).length}
+                {actionItems.filter((a) => !a.isDone).length}
               </span>
             )}
             {tab === key && <span className="absolute inset-x-0 -bottom-px h-0.5 rounded-full bg-primary" />}
@@ -159,21 +175,21 @@ function CompletedBody({ meeting }) {
       <div className="animate-fade-in-up py-6" key={tab}>
         {tab === 'summary' && (
           <SummaryView
-            overview={overview.summary.overview}
-            points={overview.summary.points}
-            speakers={overview.speakers}
+            overview={summary.overview}
+            points={summary.points}
+            speakers={speakers}
             onJumpToTranscript={jumpToTranscript}
           />
         )}
         {tab === 'transcript' && (
           <TranscriptView
-            segments={overview.transcript.segments}
-            speakers={overview.speakers}
+            segments={transcript?.segments ?? []}
+            speakers={speakers}
             highlightMs={highlightMs}
           />
         )}
-        {tab === 'actions' && <ActionItemList meetingId={meeting.id} items={overview.actionItems} />}
-        {tab === 'speakers' && <SpeakerLegend meetingId={meeting.id} speakers={overview.speakers} />}
+        {tab === 'actions' && <ActionItemList meetingId={meetingId} items={actionItems} />}
+        {tab === 'speakers' && <SpeakerLegend meetingId={meetingId} speakers={speakers} />}
       </div>
     </div>
   );

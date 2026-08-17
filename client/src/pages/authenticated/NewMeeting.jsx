@@ -5,7 +5,7 @@ import { z } from 'zod';
 import Card from '../../components/ui/Card/index.jsx';
 import Input from '../../components/ui/Input/index.jsx';
 import Button from '../../components/ui/Button/index.jsx';
-import { createDraftMeeting } from '../../utils/mockData.js';
+import { createMeeting } from './newMeeting.service.js';
 
 const schema = z.object({
   title: z.string().min(2, 'Give the meeting a short title'),
@@ -31,9 +31,17 @@ export default function NewMeeting() {
     }
     setErrors({});
     setSubmitting(true);
-    // Real: await meetingsAPI.create(result.data) — see NewMeeting.service.js integration note.
-    const meeting = createDraftMeeting(result.data);
-    navigate(`/meetings/${meeting.id}`);
+    try {
+      // meetingDate is optional server-side, but the validator requires a
+      // real YYYY-MM-DD when the key is present at all — omit it outright
+      // rather than send ''.
+      const payload = result.data.meetingDate ? result.data : { title: result.data.title };
+      const { meeting } = await createMeeting(payload);
+      navigate(`/meetings/${meeting.id}`);
+    } catch (err) {
+      setErrors({ title: [err.message ?? 'Could not create the meeting. Please try again.'] });
+      setSubmitting(false);
+    }
   }
 
   return (

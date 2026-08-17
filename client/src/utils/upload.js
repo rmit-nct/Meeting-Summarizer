@@ -1,43 +1,18 @@
 // Shared upload utility. Dropzone and Recorder both call `performUpload`.
 // The signed-URL/XHR/processing-trigger sequence is identical for both — the
 // only difference is the caller (drop-a-File vs record-a-Blob).
-//
-// TODO: replace stubs with real http.post calls once utils/http.js lands
-// (trello card #12) and the backend endpoints are live (cards #11 + #17).
+import { http } from './http.js';
+import { ENDPOINTS } from '../config/endpoints.js';
 
-async function requestSignedUrl(meetingId, meta) {
-  // Real: return http.post(ENDPOINTS.meetings.upload(meetingId), meta);
-  await new Promise((r) => setTimeout(r, 300));
-  return {
-    meeting: { id: meetingId, status: 'uploaded' },
-    upload: {
-      signedUrl: 'https://example.invalid/mock-upload-url',
-      path: `mock/${meetingId}/${meta.originalFilename}`,
-      token: 'mock-token',
-    },
-  };
+function requestSignedUrl(meetingId, meta) {
+  return http.post(ENDPOINTS.meetings.upload(meetingId), meta);
 }
 
+// XHR, not fetch — fetch has no upload-progress event, and byte progress is
+// the whole point of UploadProgress. This PUTs straight to Supabase Storage;
+// media bytes never pass through our API (CLAUDE.md rule #6).
 function uploadBytes(signedUrl, blob, mimeType, { onProgress, signal }) {
   return new Promise((resolve, reject) => {
-    // Dev stub: fake a 2s upload with progress ticks when the URL is the mock.
-    if (signedUrl.includes('example.invalid')) {
-      let pct = 0;
-      const timer = setInterval(() => {
-        pct += 0.1;
-        onProgress?.(Math.min(pct, 1));
-        if (pct >= 1) {
-          clearInterval(timer);
-          resolve();
-        }
-      }, 200);
-      signal?.addEventListener('abort', () => {
-        clearInterval(timer);
-        reject(new DOMException('Aborted', 'AbortError'));
-      });
-      return;
-    }
-
     const xhr = new XMLHttpRequest();
     xhr.open('PUT', signedUrl);
     xhr.setRequestHeader('Content-Type', mimeType);
@@ -52,10 +27,8 @@ function uploadBytes(signedUrl, blob, mimeType, { onProgress, signal }) {
   });
 }
 
-async function triggerProcessing(meetingId) {
-  // Real: return http.post(ENDPOINTS.meetings.process(meetingId));
-  await new Promise((r) => setTimeout(r, 200));
-  return { meetingId, status: 'transcribing' };
+function triggerProcessing(meetingId) {
+  return http.post(ENDPOINTS.meetings.process(meetingId));
 }
 
 /**

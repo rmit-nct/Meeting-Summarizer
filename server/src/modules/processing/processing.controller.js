@@ -11,6 +11,15 @@ async function process(req, res, next) {
   }
 }
 
+async function resummarize(req, res, next) {
+  try {
+    const meeting = await processingService.resummarize(req.params.id, req.user.id);
+    res.status(202).json(success({ meetingId: meeting.id, status: meeting.status }));
+  } catch (err) {
+    next(err);
+  }
+}
+
 async function status(req, res, next) {
   try {
     const data = await processingService.getStatus(req.params.id, req.user.id);
@@ -20,4 +29,4 @@ async function status(req, res, next) {
   }
 }
 
-export const processingController = { process, status };
+export const processingController = { process, resummarize, status };

@@ -4,7 +4,9 @@ import { useSpeakerLegend } from './useSpeakerLegend.hook.js';
 
 // SpeakerLegend — rename inferred speakers, the thing that makes speaker attribution usable.
 // See FRONTEND.md §3.
-export default function SpeakerLegend({ meetingId, speakers }) {
+export default function SpeakerLegend({ meetingId, speakers: initialSpeakers }) {
+  const { speakers, rename } = useSpeakerLegend(meetingId, initialSpeakers);
+
   if (speakers.length === 0) {
     return <p className="text-sm text-on-surface-variant">No speakers detected.</p>;
   }
@@ -12,20 +14,19 @@ export default function SpeakerLegend({ meetingId, speakers }) {
   return (
     <div className="flex flex-col gap-1">
       {speakers.map((speaker) => (
-        <SpeakerRow key={speaker.id} meetingId={meetingId} speaker={speaker} />
+        <SpeakerRow key={speaker.id} speaker={speaker} onRename={(name) => rename(speaker.id, name)} />
       ))}
     </div>
   );
 }
 
-function SpeakerRow({ meetingId, speaker }) {
-  const { rename } = useSpeakerLegend(meetingId);
+function SpeakerRow({ speaker, onRename }) {
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(speaker.displayName);
 
   function save() {
     const trimmed = value.trim();
-    if (trimmed && trimmed !== speaker.displayName) rename(speaker.id, trimmed);
+    if (trimmed && trimmed !== speaker.displayName) onRename(trimmed);
     setEditing(false);
   }
 

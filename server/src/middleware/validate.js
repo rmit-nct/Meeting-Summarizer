@@ -32,3 +32,22 @@ export function validateParams(schema) {
     next();
   };
 }
+
+// Same as validate(), but against req.query — for list endpoints like
+// GET /api/meetings?q=&page=&limit=. Express 5 made `req.query` a getter
+// with no setter (unlike req.body/req.params), so a plain assignment throws
+// — redefine the property instead of assigning to it.
+export function validateQuery(schema) {
+  return (req, res, next) => {
+    if (!schema) return next();
+    const result = schema.safeParse(req.query);
+    if (!result.success) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'validation_failed', message: 'Validation failed', details: result.error.flatten() },
+      });
+    }
+    Object.defineProperty(req, 'query', { value: result.data, writable: true, configurable: true });
+    next();
+  };
+}
