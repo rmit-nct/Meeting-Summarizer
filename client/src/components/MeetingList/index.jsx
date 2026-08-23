@@ -105,7 +105,7 @@ function IconStep({ icon: Icon, label, ...props }) {
 }
 
 function MeetingRow({ meeting }) {
-  const statusMeta = STATUS_META[meeting.status] ?? STATUS_META.draft;
+  const statusMeta = STATUS_META[meeting.status] ?? UNKNOWN_STATUS_META;
 
   return (
     <Card interactive padding="md" className="group">

@@ -1,8 +1,9 @@
 // Duration, date, and timestamp formatting helpers. See FRONTEND.md §7.
 
 export function formatDate(input, opts = {}) {
+  if (!input) return '—';
   const date = input instanceof Date ? input : new Date(input);
-  if (Number.isNaN(date.getTime())) return '';
+  if (Number.isNaN(date.getTime())) return '—';
   return date.toLocaleDateString(undefined, {
     year: 'numeric', month: 'short', day: 'numeric', ...opts,
   });
