@@ -63,3 +63,10 @@ export const meetingValidator = {
       path: ['from'],
     }),
 };
+
+// Route param guard for /:id — used by overview.routes.js via
+// middleware/validateParams. Rejects a malformed uuid with 400 rather than
+// letting Postgres throw on a bad cast.
+export const meetingIdParam = z.object({
+  id: z.uuid(),
+});

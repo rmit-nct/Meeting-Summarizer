@@ -26,3 +26,8 @@ export function toStatus(row) {
     errorMessage: row.error_message ?? null,
   };
 }
+
+// Alias for overview.service.js, which imports it under the module-qualified
+// name. Same function — the two names exist because the module and its
+// consumer were written on separate branches.
+export const toMeetingDto = toApi;

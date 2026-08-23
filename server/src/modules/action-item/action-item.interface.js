@@ -6,4 +6,4 @@ async function listForMeeting(meetingId, userId) {
   return actionItemService.listByMeeting(userId, meetingId);
 }
 
-export const actionItemInterface = { listForMeeting };
+export const actionItemInterface = { listForOwner: listForMeeting };
