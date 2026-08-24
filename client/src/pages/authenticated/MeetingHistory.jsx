@@ -1,19 +1,31 @@
+import { useEffect, useState } from 'react';
 import { Clock, ListChecks, CheckCircle, Plus } from '@phosphor-icons/react';
 import Card from '../../components/ui/Card/index.jsx';
 import Button from '../../components/ui/Button/index.jsx';
 import MeetingList from '../../components/MeetingList/index.jsx';
-import { useMockMeetings } from '../../utils/mockData.js';
 import { useAuth } from '../../hooks/useAuth.js';
+import { fetchAllMeetings } from './meetingHistory.service.js';
 
-// MeetingHistory — the authenticated home / "dashboard". Stat tiles are computed from what
-// MeetingList already has (no separate stats endpoint documented in ENDPOINTS.md), the row
-// list itself is delegated entirely to <MeetingList/> per FRONTEND.md §3.
+// MeetingHistory — the authenticated home / "dashboard". Stat tiles are computed from every
+// meeting the user has (no separate stats endpoint documented in ENDPOINTS.md, so this page
+// walks the paginated list itself — see meetingHistory.service.js); the row list itself is
+// delegated entirely to <MeetingList/> per FRONTEND.md §3, which fetches independently.
 export default function MeetingHistory() {
   const { user } = useAuth();
-  const meetings = useMockMeetings();
+  const [meetings, setMeetings] = useState([]);
 
-  const totalHours = meetings.reduce((sum, m) => sum + m.durationSeconds, 0) / 3600;
-  const actionItemsOpen = meetings.reduce((sum, m) => sum + m.actionItemCount, 0);
+  useEffect(() => {
+    const controller = new AbortController();
+    fetchAllMeetings({ signal: controller.signal })
+      .then(setMeetings)
+      .catch((err) => {
+        if (err.name !== 'AbortError') setMeetings([]);
+      });
+    return () => controller.abort();
+  }, []);
+
+  const totalHours = meetings.reduce((sum, m) => sum + (m.durationSeconds ?? 0), 0) / 3600;
+  const actionItemsOpen = meetings.reduce((sum, m) => sum + (m.actionItemCount ?? 0), 0);
   const completedCount = meetings.filter((m) => m.status === 'completed').length;
 
   return (

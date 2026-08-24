@@ -70,7 +70,7 @@ export function useMeetingList() {
           { signal: controller.signal },
         );
 
-        const rows = (result.meetings ?? []).map(normalizeMeeting);
+        const rows = (result.items ?? []).map(normalizeMeeting);
         setMeetings(rows);
         setTotal(result.meta?.total ?? rows.length);
         setTotalPages(result.meta?.totalPages ?? 1);

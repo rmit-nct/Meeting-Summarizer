@@ -47,7 +47,12 @@ async function request(path, init = {}, retried = false) {
   }
 
   const data = body.data;
-  if (body.meta && data && typeof data === 'object' && !Array.isArray(data)) {
+  if (body.meta && Array.isArray(data)) {
+    // A paginated list endpoint's `data` is itself the array (ENDPOINTS.md §0)
+    // — there's no object to spread `meta` onto, so wrap it instead.
+    return { items: data, meta: body.meta };
+  }
+  if (body.meta && data && typeof data === 'object') {
     return { ...data, meta: body.meta };
   }
   return data;
