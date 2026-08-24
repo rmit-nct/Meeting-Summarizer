@@ -29,7 +29,6 @@ export function createApp() {
   app.use('/api/users', authenticate, userRoutes);
   app.use('/api/meetings', authenticate, meetingRoutes);
   app.use('/api/meetings', authenticate, overviewRoutes);   // GET /:id detail
-  app.use('/api/meetings', overviewRoutes);                 // 
   app.use('/api/meetings', authenticate, processingRoutes); // /:id/process, /resummarize, /status
   app.use('/api/meetings', authenticate, summaryRoutes);    // /:id/speakers
   app.use('/api/meetings', authenticate, exportRoutes);     // /:id/export
