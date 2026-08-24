@@ -1,6 +1,0 @@
-.auth-page { min-height: 100svh; display: grid; place-items: center; padding: 24px; box-sizing: border-box; background: linear-gradient(145deg, var(--accent-bg), transparent 55%); }
-.auth-card { width: min(420px, 100%); display: grid; gap: 18px; padding: 36px; text-align: left; border: 1px solid var(--border); border-radius: 18px; background: var(--bg); box-shadow: var(--shadow); box-sizing: border-box; }
-.auth-card h1 { margin: 0; font-size: 36px; }.auth-card label { display: grid; gap: 7px; color: var(--text-h); font-weight: 600; }
-.auth-card input { padding: 12px 14px; border: 1px solid var(--border); border-radius: 9px; background: var(--bg); color: var(--text-h); font: inherit; }
-.auth-card input:focus { outline: 3px solid var(--accent-bg); border-color: var(--accent); }.auth-card button { padding: 13px; border: 0; border-radius: 9px; color: white; background: var(--accent); font: inherit; font-weight: 700; cursor: pointer; }
-.auth-card button:disabled { opacity: .65; cursor: wait; }.auth-card a { color: var(--accent); }.auth-error { color: #c62828; }
