@@ -35,10 +35,11 @@ with stripping `userId`, `storagePath`, `rawResponse`, and error internals. No m
 hand-maps fields.
 
 ### Auth
-`Authorization: Bearer <supabase_access_token>` on every route except the health check.
-`middleware/authenticate.js` verifies it with Supabase and sets `req.user`. There are no
-`/api/auth/login` or `/api/auth/register` routes — sign-in, sign-up, sign-out, and password
-reset happen client-side against Supabase Auth. The server only *verifies*.
+`Authorization: Bearer <access_token>` on every route except the health check and
+`/api/auth/{register,login,refresh,logout}`. `middleware/authenticate.js` verifies the
+token via `modules/auth` and sets `req.user`. The server issues and owns its own tokens —
+see §10 — not Supabase Auth. (The database still runs on Supabase Postgres/Storage,
+accessed with the service-role key; only *identity* is custom.)
 
 ### Error codes
 
@@ -263,7 +264,7 @@ The client-side check is a courtesy; the server check is the real one. Both must
 
 ### Handshake
 ```js
-io(`${SERVER_URL}/rt`, { auth: { token: supabaseAccessToken } });
+io(`${SERVER_URL}/rt`, { auth: { token: accessToken } }); // same access token as REST, §10
 ```
 The server verifies the token via the `auth` module and joins the socket to `user:{userId}`.
 An unverified socket is disconnected immediately.
@@ -308,6 +309,13 @@ calls live in the component package's `*.service.js` (see `FRONTEND.md` §3).
 ```js
 // client/src/config/endpoints.js — single source of truth for backend paths
 export const ENDPOINTS = {
+  auth: {
+    register: () => '/api/auth/register',
+    login:    () => '/api/auth/login',
+    refresh:  () => '/api/auth/refresh',
+    logout:   () => '/api/auth/logout',
+    me:       () => '/api/auth/me',
+  },
   meetings: {
     create:      () => '/api/meetings',
     list:        () => '/api/meetings',
@@ -328,5 +336,29 @@ export const ENDPOINTS = {
 ```
 
 A shared `utils/http.js` attaches the bearer token, unwraps `data`, and throws a typed
-error from `error.code` — including a single centralized `401` handler that signs the user
-out. Component services use it; they do not re-implement it.
+error from `error.code`. On a `401` it retries once after a silent token refresh
+(`stores/auth.store.js#refresh`); if that also fails it signs the user out and redirects to
+`/login`. Component services use it; they do not re-implement it.
+
+---
+
+## 10. `auth` module — `/api/auth`
+
+Custom identity, not Supabase Auth: bcrypt-hashed passwords in `public.users`, our own
+access/refresh JWTs (`JWT_ACCESS_SECRET` / `JWT_REFRESH_SECRET`), refresh tokens stored as a
+sha256 hash in `public.refresh_tokens` (rotated on every use, revoked on logout). See
+`server/src/modules/auth/`.
+
+| Route | Body | Response | Auth |
+| --- | --- | --- | --- |
+| `POST /register` | `{ email, password, name }` | `{ user, accessToken, refreshToken }` | none, rate-limited |
+| `POST /login` | `{ email, password }` | `{ user, accessToken, refreshToken }` | none, rate-limited |
+| `POST /refresh` | `{ refreshToken }` | `{ user, accessToken, refreshToken }` | none — the refresh token itself is the credential |
+| `POST /logout` | `{ refreshToken }` | `204` | none — revokes the given refresh token |
+| `GET /me` | — | `user` | bearer access token |
+
+`user` is `{ id, email, name, role, avatarUrl, createdAt, updatedAt }` — never `password_hash`.
+
+`accessToken` expires after `ACCESS_TOKEN_TTL_MIN` (default 15 min); `refreshToken` after
+`REFRESH_TOKEN_TTL_DAYS` (default 7 days). Every `/refresh` call rotates the refresh token —
+the old one is revoked, so reusing a stolen-but-since-rotated token fails closed.
