@@ -20,7 +20,7 @@ export function Topbar({ onOpenMenu }) {
   }, []);
 
   return (
-    <header className="flex h-16 shrink-0 items-center gap-3 border-b border-outline-variant/60 bg-surface-container-lowest px-4 sm:px-6">
+    <header className="relative z-20 flex h-16 shrink-0 items-center gap-3 border-b border-outline-variant/60 bg-surface-container-lowest px-4 sm:px-6">
       <button
         type="button"
         onClick={onOpenMenu}

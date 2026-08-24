@@ -25,10 +25,11 @@ export function RouteGuard({ tier, children }) {
     return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
-  if (tier === 'public' && user && (location.pathname === '/login' || location.pathname === '/signup')) {
-    return <Navigate to="/meetings" replace />;
-  }
-
+  // Deliberately no "already signed in -> bounce away from /login /signup"
+  // redirect here. An authenticated user can still open those pages (e.g.
+  // to sign into a different account); Login.jsx/Signup.jsx's own
+  // navigate('/meetings') after a successful sign-in/up is what sends them
+  // on. See the comment on Login.jsx's handleSubmit.
   return children;
 }
 
