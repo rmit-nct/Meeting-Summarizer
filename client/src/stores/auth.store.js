@@ -4,6 +4,8 @@ import { env } from '../config/env.js';
 const REFRESH_KEY = 'meeting-summarizer-refresh-token';
 const ACCESS_KEY = 'meeting-summarizer-access-token';
 
+let refreshInFlight = null;
+
 function persistSession(session) {
   localStorage.setItem(ACCESS_KEY, session.accessToken);
   localStorage.setItem(REFRESH_KEY, session.refreshToken);
@@ -42,11 +44,21 @@ export const useAuthStore = create((set, get) => ({
     const session = await authRequest('/api/auth/register', { email, password, name });
     persistSession(session); set({ ...session, hydrated: true }); return session;
   },
+  // Shares one in-flight request across concurrent callers (StrictMode's
+  // double-effect on RouteGuard's hydrate(), or two API calls 401ing at
+  // once) instead of firing the refresh twice — the server tolerates that
+  // race (each refresh call gets its own unique token), but there's no
+  // reason to spend two round trips and two token rotations on it.
   async refresh() {
+    if (refreshInFlight) return refreshInFlight;
     const refreshToken = get().refreshToken ?? localStorage.getItem(REFRESH_KEY);
     if (!refreshToken) throw new Error('No refresh token');
-    const session = await authRequest('/api/auth/refresh', { refreshToken });
-    persistSession(session); set({ ...session, hydrated: true }); return session.accessToken;
+    refreshInFlight = (async () => {
+      const session = await authRequest('/api/auth/refresh', { refreshToken });
+      persistSession(session); set({ ...session, hydrated: true }); return session.accessToken;
+    })();
+    try { return await refreshInFlight; }
+    finally { refreshInFlight = null; }
   },
   async hydrate() {
     if (get().hydrated) return;

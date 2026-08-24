@@ -10,11 +10,16 @@ const DUMMY_HASH = '$2b$12$9Q2J3t6F5L5Y9MRR8Y7zQOzQ4xGqWqJzM7PCP0oHH8vEH8xDxl7dK
 const hashToken = (token) => crypto.createHash('sha256').update(token).digest('hex');
 function signAccessToken(user) {
   const expireAt = Date.now() + env.ACCESS_TOKEN_TTL_MIN * 60_000;
-  return jwt.sign({ id: user.id, email: user.email, name: user.name, role: user.role, expireAt }, env.JWT_ACCESS_SECRET, { expiresIn: `${env.ACCESS_TOKEN_TTL_MIN}m` });
+  return jwt.sign({ id: user.id, email: user.email, name: user.name, role: user.role, expireAt, jti: crypto.randomUUID() }, env.JWT_ACCESS_SECRET, { expiresIn: `${env.ACCESS_TOKEN_TTL_MIN}m` });
 }
+// jti makes every token unique even when two are signed for the same user in
+// the same second — jwt.sign is otherwise deterministic (iat has 1s
+// granularity), so two concurrent refreshes would sign byte-identical
+// tokens and the second insertRefreshToken would collide on the
+// refresh_tokens.token_hash unique constraint.
 function signRefreshToken(user) {
   const expiresAt = new Date(Date.now() + env.REFRESH_TOKEN_TTL_DAYS * 86_400_000);
-  const token = jwt.sign({ id: user.id, type: 'refresh' }, env.JWT_REFRESH_SECRET, { expiresIn: `${env.REFRESH_TOKEN_TTL_DAYS}d` });
+  const token = jwt.sign({ id: user.id, type: 'refresh', jti: crypto.randomUUID() }, env.JWT_REFRESH_SECRET, { expiresIn: `${env.REFRESH_TOKEN_TTL_DAYS}d` });
   return { token, tokenHash: hashToken(token), expiresAt };
 }
 async function issueSession(user) {
