@@ -6,7 +6,7 @@ import { MAX_SUMMARY_POINTS, MAX_ACTION_ITEMS, MAX_SUMMARY_SPEAKERS } from '../.
 // Bump whenever the wording below changes meaningfully, even if the JSON
 // shape doesn't move — summaries.prompt_version records which prompt
 // produced which row (AI_INTEGRATION.md §5).
-export const PROMPT_VERSION = '1.1.0';
+export const PROMPT_VERSION = '1.2.0';
 
 // Must stay in lockstep with SummaryResponseSchema in summary.validator.js —
 // this is the prose description of exactly that shape.
@@ -60,6 +60,15 @@ Rules, no exceptions:
   include it. If it's just context, opinion, or in-the-moment explanation, leave it out. Still
   never invent an owner, a due date, or any specific detail (a number, a name, a date) that was
   not stated — only the existence of the task itself may be inferred from what was actually said.
+- Pay special attention when a speaker explicitly frames something as a reminder, a heads-up, or
+  a note before moving on ("I have a few reminders", "before we start, one thing", "just a note
+  on..."). Whatever follows that framing is very likely an action item even when the actual ask
+  is stated indirectly rather than as a clean instruction — real speech is often rambling, with
+  false starts and filler words, and the task is still there underneath. Extract the clear
+  underlying task from the surrounding disfluency; do not require a tidy imperative sentence to
+  already exist in the transcript. Still apply every other rule above: no invented owner, date,
+  or specifics — only the existence and substance of the task may be reconstructed from what was
+  actually (if messily) said.
 - tempId values are unique within their own array and use the prefixes shown (spk_, pt_, ai_).
   Every speakerTempId / ownerTempId MUST reference a tempId that actually exists in speakers[].
   A dangling reference is a failure — do not emit one.
@@ -88,7 +97,13 @@ Calibration for actionItems (catch real follow-ups, but never invent detail):
 - "We still need to send the client the updated proposal" -> IS an action item even with no
   owner named (ownerTempId: null, ownerLabelFallback: null).
 - "I think the deadline is going to be tough" -> NOT an action item — it's an observation/risk
-  (category: "risk" on a point), not something to do.`;
+  (category: "risk" on a point), not something to do.
+- "I have a few reminders... this week you will have like... course experience, so tutorial
+  sessions, I guess... this is a good chance for students to give constructive feedback" (said
+  with hesitation and filler, in an explicit "reminders" preamble) -> IS an action item:
+  "Complete the course experience / tutorial session feedback survey this week" — the reminder
+  framing plus the described action (give feedback via the survey) is enough, even though the
+  sentence itself never became a tidy instruction. dueDate stays null ("this week" is relative).`;
 
 // Feed the model numbered segments with timestamps, not the flat blob — it
 // costs a few more tokens and buys grounded startMs citations plus the turn
