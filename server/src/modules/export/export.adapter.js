@@ -18,7 +18,7 @@ function speakerName(speaker) {
 export function toExportSummary({ summary, actionItems, speakers }) {
   return {
     overview: summary?.overview ?? '',
-    speakers: (speakers ?? []).map((s) => ({ label: speakerName(s) })),
+    speakers: (speakers ?? []).map((s) => ({ label: speakerName(s), color: s.color ?? null })),
     points: (summary?.points ?? []).map((p) => ({
       content: p.content,
       category: p.category,
@@ -29,6 +29,7 @@ export function toExportSummary({ summary, actionItems, speakers }) {
       content: a.content,
       ownerLabel: a.ownerLabel,
       dueDate: a.dueDate,
+      isDone: a.isDone ?? false,
     })),
   };
 }
@@ -41,4 +42,28 @@ export function toExportMeta(meeting) {
     date: meeting.meetingDate ?? meeting.createdAt?.slice(0, 10) ?? new Date().toISOString().slice(0, 10),
     durationSeconds: meeting.durationSeconds ?? null,
   };
+}
+
+// The export previously never included the transcript at all. Mirrors
+// TranscriptView's own fallback: real per-turn segments (with a raw
+// speakerLabel, per text.parser.js's turn detection) when present, else the
+// flat fullText as paragraphs (a .txt upload with no detectable turn
+// structure), else omitted — never a "no transcript" placeholder in the
+// export, that case just means there's nothing to append.
+export function toExportTranscript(transcript) {
+  if (!transcript) return null;
+  if (transcript.segments?.length) {
+    return {
+      kind: 'segments',
+      segments: transcript.segments.map((s) => ({
+        startMs: s.startMs,
+        speakerLabel: s.speakerLabel ?? null,
+        text: s.text,
+      })),
+    };
+  }
+  if (transcript.fullText) {
+    return { kind: 'text', text: transcript.fullText };
+  }
+  return null;
 }

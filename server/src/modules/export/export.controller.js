@@ -3,7 +3,7 @@
 // (overview.interface.js) so an export can never disagree with the screen.
 import { overviewInterface } from '../overview/overview.interface.js';
 import { exportSummary } from './export.service.js';
-import { toExportSummary, toExportMeta } from './export.adapter.js';
+import { toExportSummary, toExportMeta, toExportTranscript } from './export.adapter.js';
 import { invalidState } from '../../shared/errors.js';
 
 const CONTENT_TYPES = { md: 'text/markdown; charset=utf-8', pdf: 'application/pdf' };
@@ -32,7 +32,7 @@ async function download(req, res, next) {
 
     const body = await exportSummary(
       format,
-      toExportSummary(overview),
+      { ...toExportSummary(overview), transcript: toExportTranscript(overview.transcript) },
       toExportMeta(overview.meeting),
     );
 
