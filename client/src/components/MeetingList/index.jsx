@@ -8,7 +8,7 @@ import Badge from '../ui/Badge/index.jsx';
 import Input from '../ui/Input/index.jsx';
 import Button from '../ui/Button/index.jsx';
 import EmptyState from '../ui/EmptyState/index.jsx';
-import { STATUS_META } from '../../utils/constants.js';
+import { STATUS_META, UNKNOWN_STATUS_META } from '../../utils/constants.js';
 import { formatDate, formatDurationMinutes } from '../../utils/format.js';
 import { useMeetingList } from './useMeetingList.hook.js';
 
@@ -105,7 +105,7 @@ function IconStep({ icon: Icon, label, ...props }) {
 }
 
 function MeetingRow({ meeting }) {
-  const statusMeta = STATUS_META[meeting.status] ?? STATUS_META.draft;
+  const statusMeta = STATUS_META[meeting.status] ?? UNKNOWN_STATUS_META;
 
   return (
     <Card interactive padding="md" className="group">

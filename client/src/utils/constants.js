@@ -55,7 +55,12 @@ export const STATUS_META = {
   draft: { label: 'Draft', tone: 'secondary' },
   uploaded: { label: 'Queued', tone: 'neutral' },
   transcribing: { label: 'Transcribing', tone: 'primary' },
+  transcribed: { label: 'Transcribed', tone: 'neutral' },
   summarizing: { label: 'Summarizing', tone: 'primary' },
   completed: { label: 'Completed', tone: 'success' },
   failed: { label: 'Failed', tone: 'error' },
 };
+
+// Falling back to `draft` for an unknown status makes a pipeline failure look
+// like an unstarted meeting. Better to render something obviously wrong.
+export const UNKNOWN_STATUS_META = { label: 'Unknown', tone: 'neutral' };

@@ -9,6 +9,7 @@ import { register as registerTranscriptEvents } from './modules/transcript/trans
 import { register as registerSummaryEvents } from './modules/summary/summary.events.js';
 import { register as registerActionItemEvents } from './modules/action-item/action-item.events.js';
 import { register as registerProcessingEvents } from './modules/processing/processing.events.js';
+import { register as registerMeetingEvents } from './modules/meeting/meeting.events.js';
 
 // WebSocket handlers, registered per connection on the /rt namespace.
 import { register as registerProcessingSocket } from './modules/processing/processing.socket.js';
@@ -19,6 +20,7 @@ const app = createApp();
 const httpServer = http.createServer(app);
 const rt = createSocketServer(httpServer);
 
+registerMeetingEvents();
 registerTranscriptEvents();
 registerSummaryEvents();
 registerActionItemEvents();

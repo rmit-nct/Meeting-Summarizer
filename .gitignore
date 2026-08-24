@@ -6,3 +6,6 @@ dist/
 .DS_Store
 
 *.claude
+supabase/.temp/
+server/supabase/.temp/
+supabase/.branches/

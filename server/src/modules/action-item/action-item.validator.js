@@ -10,13 +10,17 @@ export const create = z.object({
   dueDate: isoDate.optional(),
 });
 
-export const update = z.object({
-  content: z.string().trim().min(1).max(500).optional(),
-  ownerLabel: z.string().trim().min(1).max(100).nullable().optional(),
-  dueDate: isoDate.nullable().optional(),
-  isDone: z.boolean().optional(),
-  orderIndex: z.number().int().min(0).optional(),
-});
+export const update = z
+  .object({
+    content: z.string().trim().min(1).max(500).optional(),
+    ownerLabel: z.string().trim().min(1).max(100).nullable().optional(),
+    dueDate: isoDate.nullable().optional(),
+    isDone: z.boolean().optional(),
+    orderIndex: z.number().int().min(0).optional(),
+  })
+  .refine((body) => Object.keys(body).length > 0, {
+    message: 'Provide at least one field to update',
+  });
 
 export const listQuery = z.object({
   meetingId: z.string().uuid().optional(),

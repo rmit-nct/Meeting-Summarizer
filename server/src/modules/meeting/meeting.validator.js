@@ -13,11 +13,15 @@ export const create = z.object({
 
 // Editable fields only (ENDPOINTS.md §2) — anything else is ignored because
 // only these keys are ever read off `result.data` by the service.
-export const update = z.object({
-  title: z.string().trim().min(1).max(200).optional(),
-  description: z.string().trim().max(2000).nullable().optional(),
-  meetingDate: isoDate.nullable().optional(),
-});
+export const update = z
+  .object({
+    title: z.string().trim().min(1).max(200).optional(),
+    description: z.string().trim().max(2000).nullable().optional(),
+    meetingDate: isoDate.nullable().optional(),
+  })
+  .refine((body) => Object.keys(body).length > 0, {
+    message: 'Provide at least one field to update',
+  });
 
 export const upload = z.object({
   sourceType: z.enum(['upload', 'recording']),
@@ -28,13 +32,18 @@ export const upload = z.object({
   sizeBytes: z.coerce.number().int().positive().max(env.MAX_UPLOAD_BYTES, 'File is too large'),
 });
 
-export const listQuery = z.object({
-  q: z.string().trim().min(1).optional(),
-  from: isoDate.optional(),
-  to: isoDate.optional(),
-  status: z.enum(Object.values(MEETING_STATUS)).optional(),
-  page: z.coerce.number().int().min(1).default(1),
-  limit: z.coerce.number().int().min(1).max(50).default(20),
-});
+export const listQuery = z
+  .object({
+    q: z.string().trim().min(1).max(200).optional(),
+    from: isoDate.optional(),
+    to: isoDate.optional(),
+    status: z.enum(Object.values(MEETING_STATUS)).optional(),
+    page: z.coerce.number().int().min(1).default(1),
+    limit: z.coerce.number().int().min(1).max(50).default(20),
+  })
+  .refine((query) => !query.from || !query.to || query.from <= query.to, {
+    message: '`from` must be on or before `to`',
+    path: ['from'],
+  });
 
 export const meetingIdParam = z.object({ id: z.string().uuid('id must be a valid UUID') });

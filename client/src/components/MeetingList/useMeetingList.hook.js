@@ -1,45 +1,110 @@
-import { useMemo, useState } from 'react';
-import { useMockMeetings } from '../../utils/mockData.js';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { fetchMeetings } from './meetingList.service.js';
 
 const PAGE_SIZE = 8;
+const SEARCH_DEBOUNCE_MS = 350;
 
-// Real: fetch via meetingList.service.js on mount + whenever `filters`/`page` change, with
-// loading/error state. `useMockMeetings()` is already reactive (any mock mutation re-renders
-// every subscriber), so for now filtering/pagination just run in memory.
+// Fields MeetingRow renders that GET /api/meetings does not return.
+//
+// `tags` is the dangerous one: the component calls meeting.tags.map(), which
+// throws on undefined. `attendeeCount` and `actionItemCount` only render behind
+// a > 0 check, so they degrade quietly.
+//
+// TODO: attendeeCount and actionItemCount should come from the API — they need
+// count joins on speakers and action_items in meeting.repository.list(). `tags`
+// has no column in the schema at all; drop it from the UI or add one.
+function normalizeMeeting(meeting) {
+  return {
+    tags: [],
+    attendeeCount: 0,
+    actionItemCount: 0,
+    durationSeconds: 0,
+    ...meeting,
+  };
+}
+
+// Server-side filtering and pagination — the query params already match the
+// documented contract, so the service needs no translation layer.
 export function useMeetingList() {
-  const allMeetings = useMockMeetings();
   const [filters, setFiltersState] = useState({ q: '', status: '', from: '', to: '' });
   const [page, setPage] = useState(1);
 
-  const setFilters = (patch) => {
+  const [meetings, setMeetings] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Distinguishes "no meetings at all" from "filters matched nothing". The
+  // server can't tell us both in one response, so remember whether we've ever
+  // seen results with no filters applied.
+  const [hasAnyMeetings, setHasAnyMeetings] = useState(false);
+
+  const setFilters = useCallback((patch) => {
     setFiltersState((f) => ({ ...f, ...patch }));
     setPage(1);
-  };
+  }, []);
 
-  const filtered = useMemo(() => {
-    return allMeetings
-      .filter((m) => {
-        if (filters.q && !m.title.toLowerCase().includes(filters.q.toLowerCase())) return false;
-        if (filters.status && m.status !== filters.status) return false;
-        if (filters.from && m.meetingDate < filters.from) return false;
-        if (filters.to && m.meetingDate > filters.to) return false;
-        return true;
-      })
-      .sort((a, b) => (a.meetingDate < b.meetingDate ? 1 : -1));
-  }, [allMeetings, filters]);
+  const abortRef = useRef(null);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const pageItems = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  useEffect(() => {
+    // Debounce so typing in the search box doesn't fire a request per keystroke.
+    const timer = setTimeout(async () => {
+      abortRef.current?.abort();
+      const controller = new AbortController();
+      abortRef.current = controller;
+
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        const result = await fetchMeetings(
+          {
+            q: filters.q || undefined,
+            status: filters.status || undefined,
+            from: filters.from || undefined,
+            to: filters.to || undefined,
+            page,
+            limit: PAGE_SIZE,
+          },
+          { signal: controller.signal },
+        );
+
+        const rows = (result.meetings ?? []).map(normalizeMeeting);
+        setMeetings(rows);
+        setTotal(result.meta?.total ?? rows.length);
+        setTotalPages(result.meta?.totalPages ?? 1);
+
+        const filtersActive = Boolean(filters.q || filters.status || filters.from || filters.to);
+        if (!filtersActive && rows.length > 0) setHasAnyMeetings(true);
+      } catch (err) {
+        // An aborted request isn't a failure — a newer one has replaced it.
+        if (err.name === 'AbortError') return;
+        setError(err);
+        setMeetings([]);
+      } finally {
+        setIsLoading(false);
+      }
+    }, SEARCH_DEBOUNCE_MS);
+
+    return () => clearTimeout(timer);
+  }, [filters.q, filters.status, filters.from, filters.to, page]);
+
+  const filtersActive = Boolean(filters.q || filters.status || filters.from || filters.to);
 
   return {
-    meetings: pageItems,
+    meetings,
     filters,
     setFilters,
     page,
     setPage,
     totalPages,
-    total: filtered.length,
-    isEmpty: allMeetings.length === 0,
-    isFilteredEmpty: filtered.length === 0 && allMeetings.length > 0,
+    total,
+    isLoading,
+    error,
+    // Only claim "no meetings yet" once we know the list is genuinely empty —
+    // otherwise the empty state flashes on every page load before data arrives.
+    isEmpty: !isLoading && !filtersActive && total === 0 && !hasAnyMeetings,
+    isFilteredEmpty: !isLoading && filtersActive && total === 0,
   };
 }
