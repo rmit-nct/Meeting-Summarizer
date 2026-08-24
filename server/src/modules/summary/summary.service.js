@@ -1,4 +1,4 @@
-// Groq Llama call + JSON parsing/normalization. Publishes summary:created and
+// OpenAI call + JSON parsing/normalization. Publishes summary:created and
 // summary:action-items-extracted. Plain orchestrator function, not a Template
 // Method (OOP_PATTERNS_GUIDE.md §4) — each step below is independently
 // testable/mockable and the top-level function stays flat.
@@ -123,7 +123,7 @@ async function persist(meetingId, userId, parsed, rawText) {
   const summary = await summaryRepository.createSummary(userId, {
     meetingId,
     overview: parsed.overview,
-    model: env.GROQ_SUMMARY_MODEL,
+    model: env.OPENAI_SUMMARY_MODEL,
     rawResponse: rawText,
     promptVersion: PROMPT_VERSION,
   });

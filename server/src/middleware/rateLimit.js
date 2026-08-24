@@ -1,6 +1,6 @@
 // Centralized rate limiting. See ARCHITECTURE.md §2.5. General request cap
 // applied globally in app.js, plus a stricter cap on the two endpoints that
-// actually spend a Groq call — protects the free-tier limits
+// actually spend an OpenAI call — protects against the rate/usage limits
 // AI_INTEGRATION.md §7 calls out ("never re-transcribe in a loop").
 import rateLimitLib from 'express-rate-limit';
 import { failure } from '../shared/response.js';

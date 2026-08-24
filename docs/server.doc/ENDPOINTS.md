@@ -252,9 +252,9 @@ before calling the export done.
 
 | Constraint | Value | Enforced in |
 | --- | --- | --- |
-| Allowed MIME | Audio/video: `audio/mpeg`, `audio/mp4`, `audio/wav`, `audio/webm`, `audio/flac`, `audio/ogg`, `video/mp4`, `video/webm`, `video/quicktime` — sent to Groq Whisper. Text/subtitle: `text/vtt`, `application/x-subrip`, `text/plain`, `text/markdown` — parsed directly, no Whisper call (`FROM_MEETING_TO_JSON_PLAN.md` §3). `.srt` has no registered MIME type, so acceptance is primarily by extension. | `shared/constants.js` (`ALLOWED_UPLOAD_MIME_TYPES`) + `meeting.validator.js`, mirrored in the Dropzone |
+| Allowed MIME | Audio/video: `audio/mpeg`, `audio/mp4`, `audio/wav`, `audio/webm`, `audio/flac`, `audio/ogg`, `video/mp4`, `video/webm`, `video/quicktime` — sent to OpenAI Whisper. Text/subtitle: `text/vtt`, `application/x-subrip`, `text/plain`, `text/markdown` — parsed directly, no Whisper call (`FROM_MEETING_TO_JSON_PLAN.md` §3). `.srt` has no registered MIME type, so acceptance is primarily by extension. | `shared/constants.js` (`ALLOWED_UPLOAD_MIME_TYPES`) + `meeting.validator.js`, mirrored in the Dropzone |
 | Max size | `MAX_UPLOAD_BYTES`, default 500 MB | same |
-| Groq per-request audio limit | see `AI_INTEGRATION.md` §2 — larger inputs are preprocessed and chunked server-side, never rejected | `transcript/parsers/mp4.parser.js` |
+| OpenAI per-request audio limit | see `AI_INTEGRATION.md` §2 — larger inputs are preprocessed and chunked server-side, never rejected | `transcript/parsers/mp4.parser.js` |
 
 The client-side check is a courtesy; the server check is the real one. Both must exist.
 

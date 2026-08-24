@@ -22,9 +22,9 @@ file. Where a module below is marked implemented, read the file itself.
 
 - **Implemented — application code, not yet fully runnable end-to-end (see the schema note
   below):** `meeting` (create/list/update/delete, `POST /:id/upload` issuing a signed
-  Storage URL), `transcript` (ffmpeg + Groq Whisper for audio/video, plus a Strategy+Factory
+  Storage URL), `transcript` (ffmpeg + OpenAI Whisper for audio/video, plus a Strategy+Factory
   parser set — `transcript/parsers/` — for `.vtt`/`.srt`/`.txt`/`.md`, see
-  `FROM_MEETING_TO_JSON_PLAN.md` §3), `summary` (Groq Llama call, defensive JSON
+  `FROM_MEETING_TO_JSON_PLAN.md` §3), `summary` (OpenAI GPT call, defensive JSON
   parse/validate/retry-once, tempId-based normalization into `summaries`/`summary_points`/
   `speakers` — see `FROM_MEETING_TO_JSON_PLAN.md` §4-§6), `action-item` (CRUD + the
   additive seed/merge insert from summary output), `overview` (the composed `GET /:id`
@@ -95,8 +95,8 @@ on it.
 
 ### Both
 
-`.env` files already contain placeholder (`replace-me`) values that satisfy env validation
-at boot — they are not real Supabase/Groq credentials.
+`.env` files hold real Supabase and OpenAI credentials for this project (not placeholders) —
+see `server/.env`/`server/.env.example` for the current variable names.
 
 There are no automated tests in this repository yet (`npm test` at the root and in
 `server/` is an unset placeholder). Verify changes with the smoke test in `SCAFFOLD.md` §15
@@ -135,8 +135,8 @@ authority. This table is the concrete technology mapping.
 | DB | **Supabase Postgres** | Brief requirement. Accessed through `supabase-js` (service role) inside repositories only. |
 | Auth | **Supabase Auth** | Brief requirement. The server verifies the Supabase JWT; it does not issue its own. |
 | File storage | **Supabase Storage**, private bucket | Brief requirement. Browser uploads via signed URL. |
-| Transcription | **Groq — `whisper-large-v3`** | Brief requirement. |
-| Summarization | **Groq — `llama-3.3-70b-versatile`** | Brief requirement. |
+| Transcription | **OpenAI — `whisper-1`** | Brief requirement. |
+| Summarization | **OpenAI — `gpt-4o-mini`** | Brief requirement. |
 | Deploy | `client/` → static host (Vercel/Netlify); `server/` → long-running Node host (Render/Railway/Fly) | The brief requires a live link evaluators can use. |
 
 > **Why not serverless.** A serverless host breaks WebSocket and kills long transcription
@@ -151,7 +151,7 @@ authority. This table is the concrete technology mapping.
 | `ARCHITECTURE.md` | **Read first, before any code.** Module boundaries, N-Tier rules, protocol split, the pipeline, deployment. It is the authority; if another doc contradicts it, this one wins. |
 | `MODELS.md` | You touch the database, write SQL, or add a migration. |
 | `ENDPOINTS.md` | You add or call a REST route or a WebSocket event. This is the contract. |
-| `AI_INTEGRATION.md` | You touch Groq, ffmpeg, prompts, JSON parsing, or speaker attribution. |
+| `AI_INTEGRATION.md` | You touch OpenAI, ffmpeg, prompts, JSON parsing, or speaker attribution. |
 | `FRONTEND.md` | You add a page, a component package, a store, or a hook. |
 | `SETUP.md` | Env vars, local setup, Supabase setup, deploying either app. |
 | `DELIVERABLES.md` | Anything about submission: README, Gantt, Trello, demo video, weekly reports. |
@@ -185,8 +185,9 @@ restyling any client UI.
 
 7. **No hardcoded URLs or keys.** Backend paths live in `client/src/config/endpoints.js`;
    everything environmental goes through `config/env.js` on each side.
-8. **Secrets are server-only.** `GROQ_API_KEY`, `SUPABASE_SECRET_KEY`, and
-   `SUPABASE_JWT_SECRET` exist only in `server/`. Anything in `client/` is public by definition.
+8. **Secrets are server-only.** `OPENAI_API_KEY`, `SUPABASE_SERVICE_ROLE_KEY`,
+   `JWT_ACCESS_SECRET`, and `JWT_REFRESH_SECRET` exist only in `server/`. Anything in
+   `client/` is public by definition.
 9. **The browser uploads directly to Supabase Storage** via a signed URL. Media bytes never
    pass through the API.
 10. **Every schema change is a migration file** in `server/supabase/migrations/`.

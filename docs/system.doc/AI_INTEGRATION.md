@@ -1,20 +1,20 @@
 # AI_INTEGRATION.md
 
-The Groq layer: audio preprocessing, transcription, summarization, prompts, output parsing,
+The OpenAI layer: audio preprocessing, transcription, summarization, prompts, output parsing,
 and the known gaps.
 
-Placement follows the module boundaries. The Groq SDK client is a **config-layer** concern
-(`server/src/config/groq.js`); the calls belong to the modules that own the resulting data:
+Placement follows the module boundaries. The OpenAI SDK client is a **config-layer** concern
+(`server/src/config/openai.js`); the calls belong to the modules that own the resulting data:
 
 | Concern | Lives in |
 | --- | --- |
-| Groq SDK client construction | `config/groq.js` |
+| OpenAI SDK client construction | `config/openai.js` |
 | ffmpeg preprocessing + Whisper call | `modules/transcript/transcript.service.js` |
-| Llama call, parsing, normalization | `modules/summary/summary.service.js` |
+| GPT call, parsing, normalization | `modules/summary/summary.service.js` |
 | Prompt text and `PROMPT_VERSION` | `modules/summary/summary.prompts.js` |
 | Deciding *when* either runs | `modules/processing/` — via the event bus |
 
-`GROQ_API_KEY` exists only in `server/`. If it ever appears in `client/`, that is a
+`OPENAI_API_KEY` exists only in `server/`. If it ever appears in `client/`, that is a
 security bug and a graded-project embarrassment.
 
 ---
@@ -23,10 +23,11 @@ security bug and a graded-project embarrassment.
 
 | Task | Model | Notes |
 | --- | --- | --- |
-| Speech → text | `whisper-large-v3` | Highest accuracy; handles Vietnamese. A `-turbo` variant is faster but less accurate — the brief names Large-v3, so use it. |
-| Summarization | `llama-3.3-70b-versatile` | Large context window, supports JSON-mode output. |
+| Speech → text | `whisper-1` | OpenAI's hosted Whisper endpoint; handles Vietnamese. |
+| Summarization | `gpt-4o-mini` | Large context window, supports JSON-mode output, low cost per call. |
 
-Both via Groq's OpenAI-compatible API.
+Both via OpenAI's native API (the SDK used elsewhere in this codebase for Groq was itself an
+OpenAI-compatible client, so the call shapes below are unchanged from before the swap).
 
 ---
 
@@ -46,15 +47,15 @@ Pipeline inside `transcript.service.js`:
    ```
    ffmpeg -i input.mp4 -vn -ac 1 -ar 16000 -c:a flac output.flac
    ```
-4. **Chunk** only if the normalized file still exceeds Groq's per-request audio size limit
-   (roughly 25 MB on the free tier; verify against current Groq docs and keep the number in
-   one place as `GROQ_AUDIO_MAX_BYTES`). Split on ~10-minute boundaries, transcribe each
+4. **Chunk** only if the normalized file still exceeds OpenAI's per-request audio size limit
+   (25 MB; verify against current OpenAI docs and keep the number in
+   one place as `OPENAI_AUDIO_MAX_BYTES`). Split on ~10-minute boundaries, transcribe each
    piece, then concatenate — **applying a time offset to every segment's `start`/`end`**.
    Forgetting the offset silently corrupts every timestamp after the first chunk.
 5. **Clean up** the temp files in a `finally` block. A long-running process leaks disk;
    a serverless one would not have.
 
-> Chunking here exists only because of Groq's request size limit — not to dodge a platform
+> Chunking here exists only because of OpenAI's request size limit — not to dodge a platform
 > timeout. That is the concrete benefit of `ARCHITECTURE.md` §0's deployment decision.
 
 ### Whisper call
@@ -62,9 +63,9 @@ Pipeline inside `transcript.service.js`:
 ```js
 // verbose_json gives segment-level timestamps. We need them for jump-to-transcript
 // and to ground speaker attribution in turn structure.
-const res = await groq.audio.transcriptions.create({
+const res = await openai.audio.transcriptions.create({
   file: audioFile,
-  model: 'whisper-large-v3',
+  model: 'whisper-1',
   response_format: 'verbose_json',
   timestamp_granularities: ['segment'],
   language: undefined,   // auto-detect; meetings may be vi or en
@@ -101,8 +102,8 @@ run a merge pass. Keep the same output schema at both levels so one parser serve
 ### Call
 
 ```js
-const completion = await groq.chat.completions.create({
-  model: 'llama-3.3-70b-versatile',
+const completion = await openai.chat.completions.create({
+  model: 'gpt-4o-mini',
   messages: [
     { role: 'system', content: SUMMARY_SYSTEM_PROMPT },
     { role: 'user',   content: buildTranscriptPrompt(segments) },
@@ -170,9 +171,9 @@ The brief requires speaker-labelled summary points, so the gap must be closed ex
 
 | Approach | How | Honest assessment |
 | --- | --- | --- |
-| **A. LLM inference (chosen)** | Give Llama the timestamped segments; it infers distinct speakers from turn-taking, self-introductions, and addressing patterns. Emits `Speaker 1..N`, or a real name when someone is clearly named. | Free, no extra vendor, ships this week. Moderate accuracy, degrades with cross-talk. Adequate for a demo *if* users can correct it. |
+| **A. LLM inference (chosen)** | Give GPT the timestamped segments; it infers distinct speakers from turn-taking, self-introductions, and addressing patterns. Emits `Speaker 1..N`, or a real name when someone is clearly named. | No extra vendor, ships this week. Moderate accuracy, degrades with cross-talk. Adequate for a demo *if* users can correct it. |
 | **B. User-corrected labels (chosen)** | A, plus `SpeakerLegend` + `PATCH /api/meetings/:id/speakers`. | Turns a shaky guess into a feature. **Build this regardless.** |
-| **C. Real diarization** | pyannote / AssemblyAI / Deepgram produce speaker-labelled turns, then Llama summarizes them. | Genuinely accurate. Another vendor, another key, another failure mode, and it departs from the brief's "Groq API" line. Only if Core finishes early. |
+| **C. Real diarization** | pyannote / AssemblyAI / Deepgram produce speaker-labelled turns, then GPT summarizes them. | Genuinely accurate. Another vendor, another key, another failure mode. Only if Core finishes early. |
 
 **Decision: A + B.** In the README and demo video, call it *speaker attribution (inferred)*,
 never "diarization". Overclaiming is easy to catch and costs more than it gains.
@@ -205,7 +206,7 @@ readable `errorMessage` and emits `meeting:failed` over the socket.
 
 | Failure | Handling |
 | --- | --- |
-| Groq `429` | Read `retry-after`, exponential backoff, max 3 attempts. Then `rate_limited` with `details.retryAfterMs`. |
+| OpenAI `429` | Read `retry-after`, exponential backoff, max 3 attempts. Then `rate_limited` with `details.retryAfterMs`. |
 | Timeout / `5xx` | 2 retries, then fail with "Transcription service unavailable, please retry". |
 | Audio over the size limit | Chunk. Only fail if chunking is not implemented yet — and say so. |
 | Empty transcript (silent recording) | Fail with "No speech detected in the recording". Do not run summarization on empty text. |
@@ -219,14 +220,15 @@ column is not acceptable.
 
 ## 7. Cost, rate limits, and demo insurance
 
-Groq's free tier has per-minute and per-day request/token limits. Two practical consequences:
+OpenAI's API has per-minute and per-day request/token limits (tier-dependent). Two practical
+consequences:
 
 - **Never re-transcribe in a loop during development.** `POST /:id/process` returns `409`
   when a transcript already exists — that guard is a cost control, not just hygiene.
 - **Keep fixtures.** Save one real transcript JSON and one summary JSON under
-  `server/fixtures/`, and set `MOCK_AI=true` in `.env` to bypass Groq entirely. This lets
+  `server/fixtures/`, and set `MOCK_AI=true` in `.env` to bypass OpenAI entirely. This lets
   the whole summarization and UI path be developed offline, and it is the fallback that
   saves the demo if the API rate-limits you mid-recording.
 
-`MOCK_AI` is read in `config/groq.js` and swaps the client for a fixture-backed stub. No
+`MOCK_AI` is read in `config/openai.js` and swaps the client for a fixture-backed stub. No
 module method changes — that is the point of putting the SDK in the config layer.

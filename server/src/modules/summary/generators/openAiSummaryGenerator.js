@@ -1,5 +1,5 @@
-// SummaryGenerator implementation backed by Groq Llama. See AI_INTEGRATION.md §3.
-import { groq } from '../../../config/groq.js';
+// SummaryGenerator implementation backed by OpenAI. See AI_INTEGRATION.md §3.
+import { openai } from '../../../config/openai.js';
 import { env } from '../../../config/env.js';
 import { logger } from '../../../shared/logger.js';
 import { rateLimited, aiProviderError } from '../../../shared/errors.js';
@@ -7,10 +7,10 @@ import { SUMMARY_SYSTEM_PROMPT, buildTranscriptPrompt } from '../summary.prompts
 
 const MAX_ATTEMPTS = 3;
 
-export class GroqSummaryGenerator {
+export class OpenAiSummaryGenerator {
   // Returns the raw string the model returned — parsing/validation is the
   // caller's job (summary.service.js), so this class stays a thin adapter
-  // over the Groq call, retryable independently of JSON-shape retries.
+  // over the OpenAI call, retryable independently of JSON-shape retries.
   async generateSummary(segments, { retryHint } = {}) {
     const userContent = retryHint
       ? `${buildTranscriptPrompt(segments)}\n\nYour previous response was invalid: ${retryHint}\nReturn a corrected JSON object matching the required shape exactly.`
@@ -19,8 +19,8 @@ export class GroqSummaryGenerator {
     let lastErr;
     for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
       try {
-        const completion = await groq.chat.completions.create({
-          model: env.GROQ_SUMMARY_MODEL,
+        const completion = await openai.chat.completions.create({
+          model: env.OPENAI_SUMMARY_MODEL,
           messages: [
             { role: 'system', content: SUMMARY_SYSTEM_PROMPT },
             { role: 'user', content: userContent },
@@ -47,7 +47,7 @@ export class GroqSummaryGenerator {
         throw aiProviderError('Summarization service returned an error.');
       }
     }
-    logger.error('groq summary call exhausted retries', lastErr);
+    logger.error('openai summary call exhausted retries', lastErr);
     throw aiProviderError('Summarization service unavailable, please retry.');
   }
 }

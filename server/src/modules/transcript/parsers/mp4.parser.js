@@ -1,5 +1,5 @@
 // TranscriptParser strategy for audio/video: ffmpeg normalize (+ chunk if
-// needed) then Groq Whisper per chunk. Moved here unchanged from
+// needed) then OpenAI Whisper per chunk. Moved here unchanged from
 // transcript.service.js — see OOP_PATTERNS_GUIDE.md §1 (Strategy + Factory)
 // and AI_INTEGRATION.md §2.
 import { execFile } from 'node:child_process';
@@ -10,14 +10,14 @@ import os from 'node:os';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 
-import { groq } from '../../../config/groq.js';
+import { openai } from '../../../config/openai.js';
 import { env } from '../../../config/env.js';
 import { logger } from '../../../shared/logger.js';
 import { downloadToFile } from './download.js';
 import { PipelineError } from './pipelineError.js';
 
-// ffmpeg splits on this boundary only because Groq's per-request audio size
-// limit forces it, not to dodge a platform timeout. See AI_INTEGRATION.md §2.
+// ffmpeg splits on this boundary only because OpenAI's per-request audio
+// size limit forces it, not to dodge a platform timeout. See AI_INTEGRATION.md §2.
 const SEGMENT_SECONDS = 600;
 const MAX_WHISPER_ATTEMPTS = 3;
 
@@ -102,11 +102,11 @@ async function getDurationSeconds(filePath) {
   }
 }
 
-// Only chunks when the normalized file still exceeds Groq's per-request
+// Only chunks when the normalized file still exceeds OpenAI's per-request
 // audio size limit — never to dodge a wall-clock timeout.
 async function maybeSplitIntoChunks(normalizedPath, workDir) {
   const { size } = await fs.stat(normalizedPath);
-  if (size <= env.GROQ_AUDIO_MAX_BYTES) return [normalizedPath];
+  if (size <= env.OPENAI_AUDIO_MAX_BYTES) return [normalizedPath];
 
   const pattern = path.join(workDir, 'chunk-%03d.flac');
   await execFileAsync('ffmpeg', [
@@ -125,9 +125,9 @@ async function transcribeChunkWithRetry(filePath) {
   let lastErr;
   for (let attempt = 1; attempt <= MAX_WHISPER_ATTEMPTS; attempt += 1) {
     try {
-      const res = await groq.audio.transcriptions.create({
+      const res = await openai.audio.transcriptions.create({
         file: createReadStream(filePath),
-        model: env.GROQ_TRANSCRIPTION_MODEL,
+        model: env.OPENAI_TRANSCRIPTION_MODEL,
         response_format: 'verbose_json',
         timestamp_granularities: ['segment'],
         temperature: 0,

@@ -28,7 +28,7 @@ async function transcribeMeeting(meetingId, userId) {
       fullText,
       segments,
       language: language ?? null,
-      model: env.GROQ_TRANSCRIPTION_MODEL,
+      model: env.OPENAI_TRANSCRIPTION_MODEL,
       wordCount: countWords(fullText),
     });
 

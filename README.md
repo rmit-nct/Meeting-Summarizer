@@ -39,8 +39,8 @@ npm run dev                 # http://localhost:5173
 ```
 
 Prerequisites: Node.js 20+, **ffmpeg** on the machine running `server/` (transcription of
-video/large audio fails without it), a Supabase project, and a Groq API key
-(<https://console.groq.com>).
+video/large audio fails without it), a Supabase project, and an OpenAI API key
+(<https://platform.openai.com>).
 
 ## Library dependencies
 
@@ -51,7 +51,7 @@ video/large audio fails without it), a Supabase project, and a Groq API key
 | `express` | HTTP server / REST routing |
 | `socket.io` | WebSocket server (`/rt` namespace) |
 | `@supabase/supabase-js` | Postgres, Auth, and Storage client (service role) |
-| `groq-sdk` | Groq Whisper (transcription) + Llama (summarization) |
+| `openai` | OpenAI Whisper (transcription) + GPT (summarization) |
 | `zod` | Request validation and env var validation |
 | `cors` | CORS allowlist |
 | `dotenv` | Loads `.env` |
@@ -93,16 +93,17 @@ and stays that way. Full details: `docs/system.doc/SETUP.md` §3.
 | `NODE_ENV` | no | `development` \| `production` |
 | `CLIENT_URL` | yes | Allowed CORS + socket origin. Comma-separated for multiple. Never `*`. |
 | `SUPABASE_URL` | yes | Project URL |
-| `SUPABASE_SECRET_KEY` | yes | New-format Supabase secret key. Bypasses RLS. Server only — never in `client/`. |
-| `SUPABASE_JWT_SECRET` | yes | Legacy JWT secret, used to verify Supabase access tokens |
+| `SUPABASE_SERVICE_ROLE_KEY` | yes | New-format Supabase secret key. Bypasses RLS. Server only — never in `client/`. |
+| `JWT_ACCESS_SECRET` | yes | Signs/verifies access tokens issued by `modules/auth` |
+| `JWT_REFRESH_SECRET` | yes | Signs/verifies refresh tokens issued by `modules/auth` |
 | `SUPABASE_STORAGE_BUCKET` | no | default `recordings` |
-| `GROQ_API_KEY` | yes | Server only |
-| `GROQ_TRANSCRIPTION_MODEL` | no | default `whisper-large-v3` |
-| `GROQ_SUMMARY_MODEL` | no | default `llama-3.3-70b-versatile` |
-| `GROQ_AUDIO_MAX_BYTES` | no | per-request audio limit that triggers chunking |
+| `OPENAI_API_KEY` | yes | Server only |
+| `OPENAI_TRANSCRIPTION_MODEL` | no | default `whisper-1` |
+| `OPENAI_SUMMARY_MODEL` | no | default `gpt-4o-mini` |
+| `OPENAI_AUDIO_MAX_BYTES` | no | per-request audio limit that triggers chunking |
 | `MAX_UPLOAD_BYTES` | no | default `524288000` (500 MB) |
 | `LIVE_SESSION_TTL_HOURS` | no | default `4` |
-| `MOCK_AI` | no | `true` → fixture-backed stub instead of calling Groq |
+| `MOCK_AI` | no | `true` → fixture-backed stub instead of calling OpenAI |
 
 ### `client/.env`
 

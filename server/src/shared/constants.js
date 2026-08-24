@@ -33,7 +33,7 @@ export const STATUS_STEP = Object.freeze({
   [MEETING_STATUS.FAILED]: 'Failed',
 });
 
-// Audio/video — sent to Groq Whisper (transcript.parsers/mp4.parser.js).
+// Audio/video — sent to OpenAI Whisper (transcript.parsers/mp4.parser.js).
 export const ALLOWED_AUDIO_VIDEO_MIME_TYPES = Object.freeze([
   'audio/mpeg',
   'audio/mp4',

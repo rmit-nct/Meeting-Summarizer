@@ -13,13 +13,16 @@ const schema = z.object({
   REFRESH_TOKEN_TTL_DAYS: z.coerce.number().int().positive().default(7),
   BCRYPT_ROUNDS: z.coerce.number().int().min(10).max(15).default(12),
   SUPABASE_STORAGE_BUCKET: z.string().default('recordings'),
-  GROQ_API_KEY: z.string().min(1),
-  GROQ_TRANSCRIPTION_MODEL: z.string().default('whisper-large-v3'),
-  GROQ_SUMMARY_MODEL: z.string().default('llama-3.3-70b-versatile'),
-  GROQ_AUDIO_MAX_BYTES: z.coerce.number().default(26214400),
+  OPENAI_API_KEY: z.string().min(1),
+  OPENAI_TRANSCRIPTION_MODEL: z.string().default('whisper-1'),
+  OPENAI_SUMMARY_MODEL: z.string().default('gpt-4o-mini'),
+  OPENAI_AUDIO_MAX_BYTES: z.coerce.number().default(26214400),
   MAX_UPLOAD_BYTES: z.coerce.number().default(524288000),
   LIVE_SESSION_TTL_HOURS: z.coerce.number().default(4),
-  MOCK_AI: z.coerce.boolean().default(false),
+  // z.coerce.boolean() is `Boolean(value)` under the hood — any non-empty
+  // string (including the literal "false") coerces to `true`. This is a
+  // string flag, not a number/date, so it needs an explicit string compare.
+  MOCK_AI: z.string().optional().transform((v) => v === 'true'),
 });
 
 // Fails loudly at boot rather than mysteriously later. See SETUP.md §3.

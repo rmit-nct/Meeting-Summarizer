@@ -1,7 +1,7 @@
 // SummaryGenerator implementation used when MOCK_AI=true — lets the whole
 // summarization + persistence path be exercised offline, and is the fallback
-// that saves a demo if Groq rate-limits mid-recording. See AI_INTEGRATION.md §7.
-// Same interface as GroqSummaryGenerator: generateSummary(segments) -> raw
+// that saves a demo if OpenAI rate-limits mid-recording. See AI_INTEGRATION.md §7.
+// Same interface as OpenAiSummaryGenerator: generateSummary(segments) -> raw
 // JSON string, so summary.service.js never branches on which one it holds.
 export class MockSummaryGenerator {
   async generateSummary(segments) {

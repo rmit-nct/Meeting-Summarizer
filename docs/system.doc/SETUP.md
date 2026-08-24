@@ -10,7 +10,7 @@ Local setup, environment variables, and deployment for both applications.
 - **ffmpeg** on the machine running `server/` (`apt install ffmpeg` / `brew install ffmpeg`).
   Without it, transcription fails on every video file and on most large audio files.
 - A Supabase project (free tier is enough)
-- A Groq API key — <https://console.groq.com>
+- An OpenAI API key — <https://platform.openai.com>
 
 ---
 
@@ -46,13 +46,13 @@ to document the format.
 | `SUPABASE_SECRET_KEY` | **yes** | New-format Supabase secret key (`sb_secret_...`). **Bypasses RLS.** Server only. Never in `client/`. |
 | `SUPABASE_JWT_SECRET` | **yes** | Legacy HS256 shared secret, used by `authenticate.js` to verify access tokens. |
 | `SUPABASE_STORAGE_BUCKET` | no | default `recordings` |
-| `GROQ_API_KEY` | **yes** | Server only |
-| `GROQ_TRANSCRIPTION_MODEL` | no | default `whisper-large-v3` |
-| `GROQ_SUMMARY_MODEL` | no | default `llama-3.3-70b-versatile` |
-| `GROQ_AUDIO_MAX_BYTES` | no | per-request audio limit that triggers chunking |
+| `OPENAI_API_KEY` | **yes** | Server only |
+| `OPENAI_TRANSCRIPTION_MODEL` | no | default `whisper-1` |
+| `OPENAI_SUMMARY_MODEL` | no | default `gpt-4o-mini` |
+| `OPENAI_AUDIO_MAX_BYTES` | no | per-request audio limit that triggers chunking |
 | `MAX_UPLOAD_BYTES` | no | default `524288000` (500 MB) |
 | `LIVE_SESSION_TTL_HOURS` | no | default `4` |
-| `MOCK_AI` | no | `true` → fixture-backed stub instead of Groq |
+| `MOCK_AI` | no | `true` → fixture-backed stub instead of OpenAI |
 
 ### `client/.env`
 
@@ -70,7 +70,7 @@ Everything in `client/.env` ships to the browser. If a value must stay secret, i
 
 Each side reads env **once**, in one file, validated with Zod at module load:
 `server/src/config/env.js` and `client/src/config/env.js`. The app should fail loudly at
-boot with "GROQ_API_KEY is missing", not mysteriously at 2 a.m. during the demo.
+boot with "OPENAI_API_KEY is missing", not mysteriously at 2 a.m. during the demo.
 
 No `process.env` / `import.meta.env` reads anywhere else in either codebase.
 
@@ -169,7 +169,7 @@ before evaluators open the link. A trivial `GET /api/health` pinged on a schedul
 
 - [ ] No `.env` in git history (`git log --all --  '*/.env'` is empty)
 - [ ] No key literal in either codebase (`grep -rn "gsk_\|eyJ" client/src server/src` is clean)
-- [ ] `SUPABASE_SECRET_KEY`, `SUPABASE_JWT_SECRET`, and `GROQ_API_KEY` appear only under `server/`
+- [ ] `SUPABASE_SERVICE_ROLE_KEY`, `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`, and `OPENAI_API_KEY` appear only under `server/`
 - [ ] No `VITE_`-prefixed secret
 - [ ] RLS enabled on all eight tables
 - [ ] The `recordings` bucket is private
