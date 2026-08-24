@@ -1,17 +1,20 @@
 import { useUiStore } from '../../stores/ui.store.js';
+import { downloadExport } from './exportMenu.service.js';
 
-// Real: builds the href from ENDPOINTS.meetings.export(meetingId, format) and lets the
-// browser download it directly (see exportMenu.service.js) — no fetch needed. Until the
-// endpoint exists, clicking surfaces an honest toast instead of a broken navigation.
+// Real: triggers an authenticated file download via exportMenu.service.js.
 export function useExportMenu(meetingId) {
   const pushToast = useUiStore((s) => s.pushToast);
 
   return {
-    exportAs: (format) => {
-      pushToast({
-        tone: 'neutral',
-        message: `${format.toUpperCase()} export isn't connected yet — meeting ${meetingId} will download once the API is live.`,
-      });
+    exportAs: async (format) => {
+      try {
+        await downloadExport(meetingId, format);
+      } catch (err) {
+        pushToast({
+          tone: 'error',
+          message: err.message ?? `Could not export as ${format.toUpperCase()}. Try again.`,
+        });
+      }
     },
   };
 }

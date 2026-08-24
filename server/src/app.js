@@ -20,7 +20,11 @@ import authRoutes from './modules/auth/auth.routes.js';
 export function createApp() {
   const app = express();
 
-  app.use(cors({ origin: env.CLIENT_URL.split(',') }));
+  // exposedHeaders: Content-Disposition isn't in the CORS-safelisted response
+  // header set, so without this fetch() can read the export's status/body
+  // fine but Response.headers.get('Content-Disposition') silently returns
+  // null — exportMenu.service.js needs it to name the downloaded file.
+  app.use(cors({ origin: env.CLIENT_URL.split(','), exposedHeaders: ['Content-Disposition'] }));
   app.use(express.json());
   app.use(rateLimit);
 
