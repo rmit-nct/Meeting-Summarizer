@@ -6,6 +6,7 @@ import { eventBus } from '../../shared/eventBus.js';
 import { logger } from '../../shared/logger.js';
 import { invalidState } from '../../shared/errors.js';
 import { MEETING_STATUS, STATUS_PROGRESS, STATUS_STEP, isValidTransition } from '../../shared/constants.js';
+import { objectExists } from '../../config/upload.js';
 
 // Starts the pipeline. Returns as soon as the status transition is written —
 // the caller (controller) responds 202 immediately; transcription runs on
@@ -26,6 +27,18 @@ async function startProcessing(meetingId, userId) {
 
   if (!isValidTransition(meeting.status, MEETING_STATUS.TRANSCRIBING)) {
     throw invalidState(`Cannot process a meeting in status "${meeting.status}"`);
+  }
+
+  // attachUpload() marks the meeting 'uploaded' the moment it issues the
+  // signed URL — before the browser has actually PUT any bytes to Storage.
+  // If that PUT then failed (bad bucket config, network error, expired
+  // token…), the meeting is stuck claiming a file that was never written.
+  // Catch that here rather than silently starting a transcription job that
+  // can only fail once it tries to download a nonexistent object.
+  if (meeting.status === MEETING_STATUS.UPLOADED && !(await objectExists(meeting.storage_path))) {
+    throw invalidState(
+      'No file was found for this meeting — the upload may not have completed. Delete this meeting and try uploading again.',
+    );
   }
 
   const updated = await meetingInterface.markTranscribing(meetingId, userId);
