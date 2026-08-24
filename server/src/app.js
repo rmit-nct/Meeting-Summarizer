@@ -15,6 +15,7 @@ import processingRoutes from './modules/processing/processing.routes.js';
 import summaryRoutes from './modules/summary/summary.routes.js';
 import exportRoutes from './modules/export/export.routes.js';
 import actionItemRoutes from './modules/action-item/action-item.routes.js';
+import authRoutes from './modules/auth/auth.routes.js';
 
 export function createApp() {
   const app = express();
@@ -25,6 +26,7 @@ export function createApp() {
 
   // No auth required — confirms the process booted. See SETUP.md §5.
   app.get('/api/health', (req, res) => res.json(success({ status: 'ok' })));
+  app.use('/api/auth', authRoutes);
 
   app.use('/api/users', authenticate, userRoutes);
   app.use('/api/meetings', authenticate, meetingRoutes);

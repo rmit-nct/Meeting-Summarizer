@@ -41,7 +41,7 @@ export default function Signup() {
     setFieldErrors({});
 
     try {
-      await signUp(result.data);
+      await signUp(result.data.email, result.data.password, result.data.username);
       navigate('/meetings', { replace: true });
     } catch (err) {
       setFormError(err.message);

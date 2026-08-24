@@ -9,23 +9,32 @@ import { env } from '../config/env.js';
 // page/limit/total/totalPages in `meta`, OUTSIDE `data`. Returning `data` alone
 // silently loses pagination, so `meta` is merged onto the returned object when
 // present. (Safe as long as no endpoint has a `data.meta` field of its own.)
-async function request(path, init = {}) {
-  const session = useAuthStore.getState().session;
+async function request(path, init = {}, retried = false) {
+  const accessToken = useAuthStore.getState().accessToken;
 
   const res = await fetch(`${env.VITE_API_URL}${path}`, {
     ...init,
     headers: {
       'Content-Type': 'application/json',
-      ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       ...init.headers,
     },
   });
 
-  const body = await res.json().catch(() => ({}));
+  const body = res.status === 204 ? { success: true } : await res.json().catch(() => ({}));
 
-  if (res.status === 401) {
-    // TODO: sign the user out via auth.store.js and redirect to /login
-    throw new HttpError('unauthorized', 'Your session has expired', 401);
+  // A single retry after a silent refresh — most 401s are just an expired
+  // access token, not a real sign-out. If the refresh token is also dead,
+  // fall through to signing out and bouncing to /login.
+  if (res.status === 401 && !retried) {
+    try {
+      await useAuthStore.getState().refresh();
+      return request(path, init, true);
+    } catch {
+      await useAuthStore.getState().signOut();
+      window.location.assign('/login');
+      throw new HttpError('unauthorized', 'Your session has expired', 401);
+    }
   }
 
   if (!res.ok || body.success === false) {

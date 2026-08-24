@@ -28,9 +28,9 @@ function disconnect() {
 }
 
 useAuthStore.subscribe((state, prevState) => {
-  const wasAuthenticated = prevState.status === 'authenticated';
-  const isAuthenticated = state.status === 'authenticated';
-  if (isAuthenticated && !wasAuthenticated) connect(state.session?.access_token);
+  const wasAuthenticated = Boolean(prevState.user);
+  const isAuthenticated = Boolean(state.user);
+  if (isAuthenticated && !wasAuthenticated) connect(state.accessToken);
   if (!isAuthenticated && wasAuthenticated) disconnect();
 });
 

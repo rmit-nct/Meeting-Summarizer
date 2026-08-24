@@ -1,18 +1,31 @@
+import { useEffect } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
-import { useAuthStore, selectIsAuthenticated } from '../stores/auth.store.js';
+import { useAuthStore } from '../stores/auth.store.js';
 
 // Enforces the tier before a page renders. UX affordance, not security — every
 // rule here is enforced again by the server's middleware/authorize.js.
 // See FRONTEND.md §2, ARCHITECTURE.md §5.4.
+//
+// `hydrate()` exchanges a stored refresh token for a fresh session on first
+// load — without it, a page reload always looks signed-out until the first
+// API call happens to 401 and trigger a refresh via utils/http.js.
 export function RouteGuard({ tier, children }) {
-  const isAuthenticated = useAuthStore(selectIsAuthenticated);
+  const user = useAuthStore((s) => s.user);
+  const hydrated = useAuthStore((s) => s.hydrated);
+  const hydrate = useAuthStore((s) => s.hydrate);
   const location = useLocation();
 
-  if (tier === 'authenticated' && !isAuthenticated) {
+  useEffect(() => {
+    hydrate();
+  }, [hydrate]);
+
+  if (!hydrated) return null;
+
+  if (tier === 'authenticated' && !user) {
     return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
-  if (tier === 'public' && isAuthenticated && (location.pathname === '/login' || location.pathname === '/signup')) {
+  if (tier === 'public' && user && (location.pathname === '/login' || location.pathname === '/signup')) {
     return <Navigate to="/meetings" replace />;
   }
 

@@ -36,7 +36,7 @@ export default function Login() {
     setFieldErrors({});
 
     try {
-      await signIn(result.data);
+      await signIn(result.data.email, result.data.password);
       navigate('/meetings', { replace: true });
     } catch (err) {
       setFormError(err.message);

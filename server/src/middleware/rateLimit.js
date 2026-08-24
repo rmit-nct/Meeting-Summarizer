@@ -24,3 +24,19 @@ export const aiPipelineRateLimit = rateLimitLib({
   legacyHeaders: false,
   handler: tooMany('Too many processing requests, please wait a moment before retrying.'),
 });
+
+export const loginRateLimit = rateLimitLib({
+  windowMs: 60_000,
+  limit: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: tooMany('Too many login attempts, please wait a moment before retrying.'),
+});
+
+export const registerRateLimit = rateLimitLib({
+  windowMs: 3_600_000,
+  limit: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: tooMany('Too many accounts created from this network, please try again later.'),
+});

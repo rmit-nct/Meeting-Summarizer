@@ -1,6 +1,6 @@
 import { Server } from 'socket.io';
 import { env } from './env.js';
-import { authInterface } from '../modules/auth/auth.interface.js';
+import { verifyAccessToken } from '../modules/auth/auth.interface.js';
 
 // Bootstraps the single /rt namespace. Verifies the handshake token and joins
 // every socket to its private user:{userId} room here, since that's true for
@@ -16,8 +16,7 @@ export function createSocketServer(httpServer) {
 
   rt.use((socket, next) => {
     try {
-      const user = authInterface.getUser(socket.handshake.auth?.token);
-      socket.data.user = user;
+      socket.data.user = verifyAccessToken(socket.handshake.auth?.token);
       next();
     } catch {
       next(new Error('unauthorized'));
