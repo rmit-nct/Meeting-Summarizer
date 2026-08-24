@@ -134,11 +134,13 @@ async function persist(meetingId, userId, parsed, rawText) {
   const speakerRows = await speakerRepository.bulkCreate(userId, meetingId, parsed.speakers);
   const speakerIdByLabel = new Map(speakerRows.map((row) => [row.label, row.id]));
   const speakerIdByTempId = new Map(parsed.speakers.map((s) => [s.tempId, speakerIdByLabel.get(s.label) ?? null]));
-  // display_name is always null at creation time (only a rename sets it), so
-  // the model's own label is the correct snapshot to store as the read-model
-  // owner_label — see action-item.dto.js for why this needs to be non-null
-  // whenever ownerId is a real speaker.
-  const speakerLabelByTempId = new Map(parsed.speakers.map((s) => [s.tempId, s.label]));
+  // Prefer the model's nameGuess (now also seeded onto the speaker row's
+  // display_name in speakerRepository.bulkCreate) over the generic "Speaker
+  // N" label when one was found — same snapshot rationale as before
+  // (independent of any later manual rename), just capturing the better
+  // value when the model knew a real name. See action-item.dto.js for why
+  // this needs to be non-null whenever ownerId is a real speaker.
+  const speakerLabelByTempId = new Map(parsed.speakers.map((s) => [s.tempId, s.nameGuess ?? s.label]));
 
   await summaryRepository.bulkCreatePoints(
     userId,

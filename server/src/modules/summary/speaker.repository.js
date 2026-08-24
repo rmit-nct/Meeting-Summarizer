@@ -20,6 +20,13 @@ const SPEAKER_COLOR_PALETTE = ['#00657a', '#815600', '#555c6a', '#2f6f4f', '#7a4
 
 // Bulk insert, one row per LLM-inferred speaker. Returns rows in the same
 // order they were given so the caller can zip them back against tempIds.
+//
+// display_name seeds from the LLM's nameGuess when it set one — MODELS.md §2
+// already documents "UI shows coalesce(display_name, label)" for exactly
+// this case (display_name normally only gets set by a user's manual
+// rename). Without this, nameGuess was validated by the response schema and
+// then silently discarded — the speaker record stayed "Speaker N" forever
+// even when the model correctly identified a real name.
 async function bulkCreate(userId, meetingId, speakers) {
   if (speakers.length === 0) return [];
   const { data, error } = await supabase
@@ -28,6 +35,7 @@ async function bulkCreate(userId, meetingId, speakers) {
       meeting_id: meetingId,
       user_id: userId,
       label: s.label,
+      display_name: s.nameGuess ?? null,
       color: SPEAKER_COLOR_PALETTE[i % SPEAKER_COLOR_PALETTE.length],
     })))
     .select();

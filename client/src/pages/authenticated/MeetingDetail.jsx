@@ -184,6 +184,7 @@ function CompletedBody({ meetingId, transcript, summary, actionItems, speakers }
         {tab === 'transcript' && (
           <TranscriptView
             segments={transcript?.segments ?? []}
+            fullText={transcript?.fullText ?? ''}
             speakers={speakers}
             highlightMs={highlightMs}
           />
