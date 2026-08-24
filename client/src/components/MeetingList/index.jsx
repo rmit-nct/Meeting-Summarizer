@@ -1,21 +1,27 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   MagnifyingGlass, CaretLeft, CaretRight, Clock,
-  ListChecks, UsersThree, FilePlus, WarningCircle,
+  ListChecks, UsersThree, FilePlus, WarningCircle, Check, X,
 } from '@phosphor-icons/react';
 import Card from '../ui/Card/index.jsx';
 import Badge from '../ui/Badge/index.jsx';
 import Input from '../ui/Input/index.jsx';
 import Button from '../ui/Button/index.jsx';
+import IconButton from '../ui/IconButton/index.jsx';
 import EmptyState from '../ui/EmptyState/index.jsx';
+import { useUiStore } from '../../stores/ui.store.js';
 import { STATUS_META, UNKNOWN_STATUS_META } from '../../utils/constants.js';
 import { formatDate, formatDurationMinutes } from '../../utils/format.js';
 import { useMeetingList } from './useMeetingList.hook.js';
+import MeetingCardMenu from './sub-components/MeetingCardMenu.jsx';
 
 // MeetingList — history rows, keyword search, date range, pagination. See FRONTEND.md §3.
 export default function MeetingList() {
-  const { meetings, filters, setFilters, page, setPage, totalPages, total, isEmpty, isFilteredEmpty } =
-    useMeetingList();
+  const {
+    meetings, filters, setFilters, page, setPage, totalPages, total,
+    isEmpty, isFilteredEmpty, renameMeeting, removeMeeting,
+  } = useMeetingList();
 
   if (isEmpty) {
     return (
@@ -71,7 +77,12 @@ export default function MeetingList() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">
           {meetings.map((meeting) => (
-            <MeetingRow key={meeting.id} meeting={meeting} />
+            <MeetingRow
+              key={meeting.id}
+              meeting={meeting}
+              onRename={(title) => renameMeeting(meeting.id, title)}
+              onDelete={() => removeMeeting(meeting.id)}
+            />
           ))}
         </div>
       )}
@@ -104,13 +115,34 @@ function IconStep({ icon: Icon, label, ...props }) {
   );
 }
 
-function MeetingRow({ meeting }) {
+function MeetingRow({ meeting, onRename, onDelete }) {
   const statusMeta = STATUS_META[meeting.status] ?? UNKNOWN_STATUS_META;
+  const pushToast = useUiStore((s) => s.pushToast);
+  const [isEditing, setIsEditing] = useState(false);
+
+  async function handleDelete() {
+    try {
+      await onDelete();
+    } catch {
+      pushToast({ tone: 'error', message: 'Could not delete this meeting — try again.' });
+      throw new Error('delete failed');
+    }
+  }
 
   return (
-    <Card interactive padding="md" className="group">
-      <Link to={`/meetings/${meeting.id}`} className="flex flex-col gap-3">
-        <div className="flex items-start justify-between gap-3">
+    <Card interactive={!isEditing} padding="md" className="group relative">
+      <div className="absolute right-3 top-3 z-[1]">
+        <MeetingCardMenu onEdit={() => setIsEditing(true)} onDelete={handleDelete} />
+      </div>
+
+      <Link
+        to={`/meetings/${meeting.id}`}
+        className="flex flex-col gap-3"
+        onClick={(e) => {
+          if (isEditing) e.preventDefault();
+        }}
+      >
+        <div className="flex items-start justify-between gap-3 pr-9">
           <div className="flex flex-wrap items-center gap-2">
             {meeting.tags.map((tag) => (
               <Badge key={tag} tone="neutral">{tag}</Badge>
@@ -120,9 +152,18 @@ function MeetingRow({ meeting }) {
           <Badge tone={statusMeta.tone} dot>{statusMeta.label}</Badge>
         </div>
 
-        <h3 className="text-base font-medium text-on-surface transition-colors group-hover:text-primary">
-          {meeting.title}
-        </h3>
+        {isEditing ? (
+          <EditableTitle
+            initialValue={meeting.title}
+            onSave={onRename}
+            onDone={() => setIsEditing(false)}
+            onError={() => pushToast({ tone: 'error', message: 'Could not rename this meeting — try again.' })}
+          />
+        ) : (
+          <h3 className="text-base font-medium text-on-surface transition-colors group-hover:text-primary">
+            {meeting.title}
+          </h3>
+        )}
 
         {meeting.status === 'failed' && meeting.errorMessage && (
           <p className="flex items-start gap-1.5 text-xs text-error">
@@ -151,5 +192,48 @@ function MeetingRow({ meeting }) {
         </div>
       </Link>
     </Card>
+  );
+}
+
+// Replaces the <h3> title in place. Lives inside the card's <Link>, so every
+// interaction here must stop propagation or the click/Enter that saves would
+// also navigate to the meeting.
+function EditableTitle({ initialValue, onSave, onDone, onError }) {
+  const [value, setValue] = useState(initialValue);
+  const [saving, setSaving] = useState(false);
+
+  async function save() {
+    const trimmed = value.trim();
+    if (!trimmed || trimmed === initialValue) return onDone();
+    setSaving(true);
+    try {
+      await onSave(trimmed);
+      onDone();
+    } catch {
+      onError();
+      onDone();
+    }
+  }
+
+  return (
+    <div
+      className="flex items-center gap-2"
+      onClick={(e) => e.stopPropagation()}
+      onMouseDown={(e) => e.stopPropagation()}
+    >
+      <input
+        autoFocus
+        value={value}
+        disabled={saving}
+        onChange={(e) => setValue(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') save();
+          if (e.key === 'Escape') onDone();
+        }}
+        className="h-9 w-full rounded-(--radius-md) border border-primary bg-surface-container-lowest px-2.5 text-base font-medium text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/15"
+      />
+      <IconButton icon={Check} size="sm" label="Save" disabled={saving} onClick={save} />
+      <IconButton icon={X} size="sm" label="Cancel" disabled={saving} onClick={onDone} />
+    </div>
   );
 }

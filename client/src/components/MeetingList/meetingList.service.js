@@ -17,3 +17,11 @@ export function fetchMeetings(
 
   return http.get(`${ENDPOINTS.meetings.list()}?${params.toString()}`, { signal });
 }
+
+export function updateMeetingTitle(id, title) {
+  return http.patch(ENDPOINTS.meetings.update(id), { title });
+}
+
+export function deleteMeeting(id) {
+  return http.delete(ENDPOINTS.meetings.remove(id));
+}

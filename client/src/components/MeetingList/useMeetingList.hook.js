@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { fetchMeetings } from './meetingList.service.js';
+import { deleteMeeting, fetchMeetings, updateMeetingTitle } from './meetingList.service.js';
 
 const PAGE_SIZE = 8;
 const SEARCH_DEBOUNCE_MS = 350;
@@ -92,6 +92,30 @@ export function useMeetingList() {
 
   const filtersActive = Boolean(filters.q || filters.status || filters.from || filters.to);
 
+  // Optimistic against the server, rolled back on failure — same pattern as
+  // useActionItemList.hook.js. There's no global meetings store to keep in
+  // sync (FRONTEND.md §6), so the card's own list owns this.
+  const renameMeeting = useCallback((meetingId, title) => {
+    const previous = meetings;
+    setMeetings((rows) => rows.map((m) => (m.id === meetingId ? { ...m, title } : m)));
+    return updateMeetingTitle(meetingId, title).catch((err) => {
+      setMeetings(previous);
+      throw err;
+    });
+  }, [meetings]);
+
+  const removeMeeting = useCallback((meetingId) => {
+    const previousMeetings = meetings;
+    const previousTotal = total;
+    setMeetings((rows) => rows.filter((m) => m.id !== meetingId));
+    setTotal((t) => Math.max(0, t - 1));
+    return deleteMeeting(meetingId).catch((err) => {
+      setMeetings(previousMeetings);
+      setTotal(previousTotal);
+      throw err;
+    });
+  }, [meetings, total]);
+
   return {
     meetings,
     filters,
@@ -102,6 +126,8 @@ export function useMeetingList() {
     total,
     isLoading,
     error,
+    renameMeeting,
+    removeMeeting,
     // Only claim "no meetings yet" once we know the list is genuinely empty —
     // otherwise the empty state flashes on every page load before data arrives.
     isEmpty: !isLoading && !filtersActive && total === 0 && !hasAnyMeetings,
