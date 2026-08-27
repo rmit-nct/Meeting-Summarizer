@@ -19,8 +19,9 @@ export const ACCEPTED_MIME = [...ACCEPTED_AUDIO, ...ACCEPTED_VIDEO, ...ACCEPTED_
 // For <input accept="..."> — MIME groups + extensions for broadest picker compat.
 export const ACCEPT_ATTR = 'audio/*,video/*,.srt,.vtt,.txt,.md';
 
-// 500 MB — matches server MAX_UPLOAD_BYTES default.
-export const MAX_UPLOAD_BYTES = 524_288_000;
+// This Supabase project's bucket is capped at 50 MB. Keep browser validation
+// aligned so oversized uploads are rejected before processing can get stuck.
+export const MAX_UPLOAD_BYTES = 52_428_800;
 
 export function categorizeMime(mime) {
   if (ACCEPTED_AUDIO.includes(mime)) return 'audio';

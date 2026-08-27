@@ -24,6 +24,7 @@ export function useProcessingStatus(meetingId, initialStatus, { onStatusChange }
   const [retrying, setRetrying] = useState(false);
   const connected = useSocketStore((s) => s.connected);
   const timeoutRef = useRef(null);
+  const autoStartRef = useRef(null);
 
   const applyStatus = useCallback(
     (next) => {
@@ -36,10 +37,29 @@ export function useProcessingStatus(meetingId, initialStatus, { onStatusChange }
   useEffect(() => {
     setStatus(initialStatus);
     setTimedOut(false);
+    autoStartRef.current = null;
     clearTimeout(timeoutRef.current);
     timeoutRef.current = null;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [meetingId]);
+
+  // `uploaded` means Storage already has the file but the asynchronous AI
+  // pipeline has not started yet. Normally performUpload() immediately calls
+  // POST /process, but a refresh, closed tab, or transient request failure in
+  // that narrow gap used to leave the meeting on "Queued" forever. Resume it
+  // once when this status panel mounts; the server's status transition guard
+  // prevents a duplicate start after it has moved to `transcribing`.
+  useEffect(() => {
+    if (status !== 'uploaded' || autoStartRef.current === meetingId) return;
+    autoStartRef.current = meetingId;
+    retryProcessing(meetingId)
+      .then((data) => applyStatus(data.status))
+      .catch(() => {
+        // Keep polling/status UI alive. A manual Retry appears at the normal
+        // timeout if the request remains unavailable.
+        autoStartRef.current = null;
+      });
+  }, [status, meetingId, applyStatus]);
 
   // Hard timeout, started once per meeting and cancelled the moment a
   // terminal status is reached — never reset by every progress tick.
