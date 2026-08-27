@@ -18,7 +18,10 @@ import { PipelineError } from './pipelineError.js';
 
 // ffmpeg splits on this boundary only because OpenAI's per-request audio
 // size limit forces it, not to dodge a platform timeout. See AI_INTEGRATION.md §2.
-const SEGMENT_SECONDS = 600;
+// Five-minute FLAC chunks stay comfortably below OpenAI's 25 MB multipart
+// request cap even for noisy/high-entropy recordings. Ten-minute chunks can
+// exceed the cap despite the source MP3 itself being small.
+const SEGMENT_SECONDS = 300;
 const MAX_WHISPER_ATTEMPTS = 3;
 
 const execFileAsync = promisify(execFile);
@@ -149,6 +152,12 @@ async function transcribeChunkWithRetry(filePath) {
         await sleep(1000 * attempt);
         continue;
       }
+      logger.error('whisper chunk rejected', {
+        status,
+        message: err?.message,
+        code: err?.code,
+        type: err?.type,
+      });
       throw new PipelineError('transcription_failed', 'Transcription service unavailable, please retry.');
     }
   }
